@@ -1,0 +1,12 @@
+.tourist-layout {
+  max-width: var(--tourist-max-width);
+  margin: 0 auto;
+  min-height: 100dvh;
+  background-color: var(--surface);
+  position: relative;
+}
+
+.tourist-layout-content {
+  padding: var(--margin-mobile);
+  padding-bottom: calc(var(--bottom-nav-height) + var(--space-lg));
+}

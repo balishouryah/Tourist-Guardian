@@ -1,0 +1,16 @@
+.authority-layout {
+  min-height: 100dvh;
+  background-color: var(--surface);
+}
+
+.authority-layout-content {
+  max-width: var(--authority-max-width);
+  margin: 0 auto;
+  padding: var(--space-xl) var(--margin-desktop);
+}
+
+@media (max-width: 768px) {
+  .authority-layout-content {
+    padding: var(--space-lg) var(--margin-mobile);
+  }
+}
