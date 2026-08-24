@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom';
+import { useNotifications } from '../utils/NotificationContext';
 import './BottomNav.css';
 
 const tabs = [
@@ -11,6 +12,8 @@ const tabs = [
 ];
 
 export default function BottomNav() {
+  const { unreadCount } = useNotifications();
+
   return (
     <nav className="bottom-nav" aria-label="Tourist navigation">
       {tabs.map((tab) => (
@@ -21,10 +24,27 @@ export default function BottomNav() {
             `bottom-nav-item${isActive ? ' active' : ''}`
           }
         >
-          <span className="bottom-nav-icon-wrap">
+          <span className="bottom-nav-icon-wrap" style={{ position: 'relative' }}>
             <span className="material-symbols-outlined icon-filled">
               {tab.icon}
             </span>
+            {tab.path === '/tourist/alerts' && unreadCount > 0 && (
+              <span style={{
+                position: 'absolute',
+                top: '-4px',
+                right: '-6px',
+                background: 'var(--error)',
+                color: 'white',
+                fontSize: '10px',
+                fontWeight: 'bold',
+                padding: '2px 5px',
+                borderRadius: '10px',
+                minWidth: '16px',
+                textAlign: 'center'
+              }}>
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
           </span>
           <span className="bottom-nav-label">{tab.label}</span>
         </NavLink>

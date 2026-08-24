@@ -9,6 +9,7 @@ export default function Menu() {
     {
       title: 'SECURITY & SAFETY',
       items: [
+        { icon: 'id_card', label: 'KYC & Digital Identity', description: 'Verify your identity', path: '/tourist/settings/kyc' },
         { icon: 'contacts', label: 'Emergency Contacts', description: 'People to contact in an emergency', path: '/tourist/settings/emergency' },
         { icon: 'person', label: 'My Profile', description: 'Your tourist information', path: '/tourist/profile' },
         { icon: 'offline_bolt', label: 'Offline Safety', description: 'Prepare for low-connectivity areas', path: '/tourist/offline' },

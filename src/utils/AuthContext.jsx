@@ -109,6 +109,46 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  // NEW: Realtime subscription for Tourist Profile updates (e.g., KYC approval/rejection)
+  useEffect(() => {
+    if (!supabase || !user || !touristProfile?.id) return;
+
+    const channelName = `tourist_profile_${touristProfile.id}`;
+    
+    // Safety check: ensure no stale channels of the same name are lingering
+    supabase.getChannels().forEach(ch => {
+      if (ch.topic === `realtime:${channelName}`) {
+        supabase.removeChannel(ch);
+      }
+    });
+
+    const channel = supabase.channel(channelName);
+    
+    channel.on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'tourists', filter: `id=eq.${touristProfile.id}` },
+      (payload) => {
+        console.log('[KYC REALTIME] Tourist profile updated remotely:', payload.new?.kyc_status);
+        
+        // Atomically update React state without relying solely on a delayed fetch
+        if (payload.new) {
+          setTouristProfile(prev => {
+            const next = { ...prev, ...payload.new };
+            // Also persist to local storage to keep it synced
+            localStorage.setItem(AUTH_LOCAL_STORAGE_KEY, JSON.stringify(next));
+            return next;
+          });
+        }
+      }
+    );
+    
+    channel.subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, touristProfile?.id]);
+
   const enableDemoMode = () => {
     setIsDemoMode(true);
     localStorage.setItem('tg_demo_mode', 'true');

@@ -6,6 +6,7 @@ import { SafetyProvider } from './utils/SafetyContext';
 import { ThemeProvider } from './utils/ThemeContext';
 import { LanguageProvider } from './utils/LanguageContext';
 import { AccessibilityProvider } from './utils/AccessibilityContext';
+import { NotificationProvider } from './utils/NotificationContext';
 import { useEffect } from 'react';
 import { testSupabaseConnection } from './lib/supabase';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -45,10 +46,12 @@ import PrivacyData from './tourist/screens/settings/PrivacyData';
 import HelpSupport from './tourist/screens/settings/HelpSupport';
 import LanguageSettings from './tourist/screens/settings/LanguageSettings';
 import LiveVoiceTranslator from './tourist/screens/settings/LiveVoiceTranslator';
+import KYCVerification from './tourist/screens/KYCVerification';
 
 // Authority screens
 import CommandCenter from './authority/screens/CommandCenter';
 import AIRiskCenter from './authority/screens/AIRiskCenter';
+import AuthorityKYCCenter from './authority/screens/AuthorityKYCCenter';
 import IncidentDetail from './authority/screens/IncidentDetail';
 import RiskIntelligence from './authority/screens/RiskIntelligence';
 import AuthorityMap from './authority/screens/AuthorityMap';
@@ -98,8 +101,9 @@ export default function App() {
       <AccessibilityProvider>
         <LanguageProvider>
           <AuthProvider>
-            <AuthorityAuthProvider>
-              <BrowserRouter>
+            <NotificationProvider>
+              <AuthorityAuthProvider>
+                <BrowserRouter>
             <Routes>
               {/* Welcome — no layout wrapper (full-screen) */}
               <Route path="/" element={<Welcome />} />
@@ -141,6 +145,7 @@ export default function App() {
                 <Route path="settings/privacy" element={<PrivacyData />} />
                 <Route path="settings/help" element={<HelpSupport />} />
                 <Route path="settings/emergency" element={<EmergencyContacts />} />
+                <Route path="settings/kyc" element={<KYCVerification />} />
                 <Route path="settings/translator" element={<LiveVoiceTranslator />} />
               </Route>
 
@@ -154,13 +159,15 @@ export default function App() {
                 <Route index element={<Navigate to="dashboard" replace />} />
                 <Route path="dashboard" element={<CommandCenter />} />
                 <Route path="risk-center" element={<AIRiskCenter />} />
+                <Route path="kyc" element={<AuthorityKYCCenter />} />
                 <Route path="tourist/:id" element={<IncidentDetail />} />
                 <Route path="intelligence" element={<RiskIntelligence />} />
                 <Route path="map" element={<AuthorityMap />} />
                 </Route>
               </Routes>
-              </BrowserRouter>
-            </AuthorityAuthProvider>
+                </BrowserRouter>
+              </AuthorityAuthProvider>
+            </NotificationProvider>
           </AuthProvider>
         </LanguageProvider>
       </AccessibilityProvider>

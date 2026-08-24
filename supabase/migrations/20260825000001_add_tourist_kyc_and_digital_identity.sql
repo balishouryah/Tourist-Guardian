@@ -1,0 +1,18 @@
+-- Phase 6: KYC + Blockchain-Based Digital Tourist ID
+
+-- Add KYC and Digital Identity columns to the tourists table
+ALTER TABLE public.tourists
+ADD COLUMN IF NOT EXISTS kyc_status TEXT DEFAULT 'NOT_SUBMITTED',
+ADD COLUMN IF NOT EXISTS kyc_type TEXT,
+ADD COLUMN IF NOT EXISTS kyc_document_path TEXT,
+ADD COLUMN IF NOT EXISTS kyc_submitted_at TIMESTAMP WITH TIME ZONE,
+ADD COLUMN IF NOT EXISTS kyc_verified_at TIMESTAMP WITH TIME ZONE,
+ADD COLUMN IF NOT EXISTS kyc_reviewed_at TIMESTAMP WITH TIME ZONE,
+ADD COLUMN IF NOT EXISTS kyc_reviewed_by UUID,
+ADD COLUMN IF NOT EXISTS kyc_rejection_reason TEXT,
+ADD COLUMN IF NOT EXISTS kyc_reference TEXT,
+ADD COLUMN IF NOT EXISTS blockchain_status TEXT DEFAULT 'PENDING',
+ADD COLUMN IF NOT EXISTS blockchain_reference TEXT,
+ADD COLUMN IF NOT EXISTS identity_hash TEXT,
+ADD COLUMN IF NOT EXISTS digital_id_issued_at TIMESTAMP WITH TIME ZONE,
+ADD COLUMN IF NOT EXISTS digital_id_expires_at TIMESTAMP WITH TIME ZONE;

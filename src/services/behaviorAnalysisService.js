@@ -7,6 +7,7 @@ import { calculateDistance } from './geofenceEngine';
  * - PROLONGED_INACTIVITY
  * - GPS_DROPOUT
  * - ROUTE_DEVIATION
+ * - GPS_ANOMALY (Impossible location jumps)
  */
 
 const INACTIVITY_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
@@ -14,12 +15,13 @@ const DROPOUT_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
 const SIGNIFICANT_MOVEMENT_METERS = 50; // Must move 50m to reset inactivity
 const MINOR_DEVIATION_METERS = 500;
 const SIGNIFICANT_DEVIATION_METERS = 1000;
+const IMPOSSIBLE_SPEED_MS = 150; // 150 meters per second (~540 km/h) - filters bad GPS
 
 export class BehaviorAnalysisEngine {
   constructor() {
     this.lastKnownLocation = null;
     this.lastMeaningfulMovementTime = Date.now();
-    this.expectedRoute = null; // Array of {lat, lon} waypoints
+    this.expectedRoute = null; // Array of {latitude, longitude} waypoints
   }
 
   setExpectedRoute(waypoints) {
@@ -32,7 +34,7 @@ export class BehaviorAnalysisEngine {
     
     const timeSinceUpdate = Date.now() - this.lastKnownLocation.timestamp;
     if (timeSinceUpdate > DROPOUT_THRESHOLD_MS) {
-      return { type: 'GPS_DROPOUT', durationMs: timeSinceUpdate };
+      return { type: 'GPS_DROPOUT', durationMs: timeSinceUpdate, minutes: Math.round(timeSinceUpdate / 60000) };
     }
     return null;
   }
@@ -41,7 +43,7 @@ export class BehaviorAnalysisEngine {
   processLocation(lat, lon, accuracy, timestamp = Date.now()) {
     const signals = [];
     
-    // 1. Inactivity Check
+    // Safety check for impossible speeds (GPS_ANOMALY)
     if (this.lastKnownLocation) {
       const dist = calculateDistance(
         this.lastKnownLocation.latitude, 
@@ -49,7 +51,25 @@ export class BehaviorAnalysisEngine {
         lat, 
         lon
       );
+      
+      const timeDiffS = (timestamp - this.lastKnownLocation.timestamp) / 1000;
+      
+      if (timeDiffS > 0) {
+        const speedMs = dist / timeDiffS;
+        
+        // If speed is impossibly high, flag an anomaly and reject this point as "last known location"
+        if (speedMs > IMPOSSIBLE_SPEED_MS && dist > 1000) {
+          signals.push({
+            type: 'GPS_ANOMALY',
+            speedMs: Math.round(speedMs),
+            distanceKm: (dist / 1000).toFixed(1)
+          });
+          // Return early so we don't trigger false route deviations or update the last known valid spot
+          return signals;
+        }
+      }
 
+      // 1. Inactivity Check (Valid Movement)
       if (dist > SIGNIFICANT_MOVEMENT_METERS) {
         this.lastMeaningfulMovementTime = timestamp;
       } else {
@@ -79,13 +99,15 @@ export class BehaviorAnalysisEngine {
         signals.push({ 
           type: 'ROUTE_DEVIATION', 
           severity: 'SIGNIFICANT',
-          deviationMeters: Math.round(minDistanceToRoute)
+          deviationMeters: Math.round(minDistanceToRoute),
+          deviationKm: (minDistanceToRoute / 1000).toFixed(1)
         });
       } else if (minDistanceToRoute > MINOR_DEVIATION_METERS) {
         signals.push({ 
           type: 'ROUTE_DEVIATION', 
           severity: 'MINOR',
-          deviationMeters: Math.round(minDistanceToRoute)
+          deviationMeters: Math.round(minDistanceToRoute),
+          deviationKm: (minDistanceToRoute / 1000).toFixed(1)
         });
       }
     }

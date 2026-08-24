@@ -197,6 +197,64 @@ export default function IncidentDetail() {
               </div>
             </div>
           </div>
+
+          <div className="incident-profile-card">
+            <h2 className="incident-section-title">
+              <span className="material-symbols-outlined">id_card</span>
+              KYC & Digital Identity
+            </h2>
+            <div className="incident-data-row">
+              <div className="incident-data-group">
+                <div className="incident-data-label">KYC Status</div>
+                <div className="incident-data-value" style={{ 
+                  color: realTourist.kyc_status === 'VERIFIED' ? 'var(--safe)' : 
+                         realTourist.kyc_status === 'REJECTED' ? 'var(--error)' : 'var(--caution)', 
+                  fontWeight: 'bold' 
+                }}>
+                  {realTourist.kyc_status || 'PENDING'}
+                </div>
+              </div>
+              <div className="incident-data-group">
+                <div className="incident-data-label">Blockchain</div>
+                <div className="incident-data-value" style={{ 
+                  color: realTourist.blockchain_status === 'VERIFIED' ? 'var(--safe)' : 
+                         realTourist.blockchain_status === 'REJECTED' ? 'var(--error)' : 'var(--caution)', 
+                  fontWeight: 'bold' 
+                }}>
+                  {realTourist.blockchain_status || 'PENDING'}
+                </div>
+              </div>
+            </div>
+            
+            {realTourist.kyc_status === 'VERIFIED' && (
+              <>
+                <div className="incident-data-row" style={{ marginTop: '8px' }}>
+                  <div className="incident-data-group">
+                    <div className="incident-data-label">Document</div>
+                    <div className="incident-data-value">{realTourist.kyc_type} {realTourist.kyc_reference}</div>
+                  </div>
+                </div>
+                <div className="incident-data-group" style={{ marginTop: '8px' }}>
+                  <div className="incident-data-label">Verification ID</div>
+                  <div className="incident-data-value" style={{ fontFamily: 'monospace', fontSize: '11px' }}>{realTourist.blockchain_reference}</div>
+                </div>
+                <div className="incident-data-row" style={{ marginTop: '8px' }}>
+                  <div className="incident-data-group">
+                    <div className="incident-data-label">Issued</div>
+                    <div className="incident-data-value" style={{ fontSize: '12px' }}>
+                      {realTourist.digital_id_issued_at ? new Date(realTourist.digital_id_issued_at).toLocaleDateString() : '-'}
+                    </div>
+                  </div>
+                  <div className="incident-data-group">
+                    <div className="incident-data-label">Expires</div>
+                    <div className="incident-data-value" style={{ fontSize: '12px' }}>
+                      {realTourist.digital_id_expires_at ? new Date(realTourist.digital_id_expires_at).toLocaleDateString() : '-'}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
           
           <div className="incident-profile-card">
             <h2 className="incident-section-title">
@@ -331,6 +389,23 @@ export default function IncidentDetail() {
             <div className="incident-signal-item">
               <span className="incident-signal-label">Safety Score</span>
               <span className="incident-signal-value">{currentScore}/100</span>
+            </div>
+            
+            <div style={{ marginTop: '16px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', marginBottom: '8px', opacity: 0.8 }}>
+                AI Behavioural Signals
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {(liveTouristData?.current_safety_signals || realTourist.current_safety_signals || []).map((sig, i) => (
+                  <div key={i} style={{ fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 500 }}>
+                    {currentSeverity !== 'SAFE' && <span className="material-symbols-outlined" style={{ fontSize: 16 }}>warning</span>}
+                    {sig}
+                  </div>
+                ))}
+                {(!liveTouristData?.current_safety_signals && !realTourist.current_safety_signals?.length) && (
+                  <div style={{ fontSize: '13px', fontWeight: 500 }}>No anomalies detected</div>
+                )}
+              </div>
             </div>
           </div>
         </div>

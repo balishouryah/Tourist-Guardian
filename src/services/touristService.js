@@ -181,6 +181,17 @@ export async function updateTouristProfile(updates) {
 
           if (error) {
           console.error('[Tourist Service] Failed to update backend profile:', error);
+          // Graceful fallback for missing KYC columns during dev before migration is applied
+          if (error.message && error.message.includes('column') && error.message.includes('does not exist')) {
+            console.warn('[Tourist Service] Missing columns in DB. Falling back to local auth cache.');
+            const local = localStorage.getItem(AUTH_LOCAL_STORAGE_KEY);
+            if (local) {
+              const profile = JSON.parse(local);
+              const updatedProfile = { ...profile, ...updates };
+              localStorage.setItem(AUTH_LOCAL_STORAGE_KEY, JSON.stringify(updatedProfile));
+              return { data: updatedProfile, error: null };
+            }
+          }
           return { data: null, error: error.message };
         } else if (data) {
           // Update local auth cache
@@ -242,7 +253,7 @@ export async function updateLiveLocation(latitude, longitude, _accuracy) {
   }
 }
 
-export async function updateLiveSafetyState(score, severity) {
+export async function updateLiveSafetyState(score, severity, signals = []) {
   try {
     if (!supabase) return { error: { message: 'Supabase not configured' } };
     
@@ -252,7 +263,8 @@ export async function updateLiveSafetyState(score, severity) {
     const { data, error } = await supabase.from('tourists')
       .update({
         current_safety_score: score,
-        current_safety_severity: severity
+        current_safety_severity: severity,
+        current_safety_signals: signals
       })
       .eq('auth_user_id', user.id)
       .select()

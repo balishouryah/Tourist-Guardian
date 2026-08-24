@@ -28,6 +28,13 @@ const STATUS = {
   ERROR: 'ERROR'
 };
 
+const TTS_STATUS = {
+  IDLE: 'IDLE',
+  SPEAKING: 'SPEAKING',
+  UNAVAILABLE: 'UNAVAILABLE',
+  ERROR: 'ERROR'
+};
+
 export default function LiveVoiceTranslator() {
   const navigate = useNavigate();
 
@@ -38,10 +45,16 @@ export default function LiveVoiceTranslator() {
   const [outputText, setOutputText] = useState('');
   const [status, setStatus] = useState(STATUS.READY);
   const [errorMessage, setErrorMessage] = useState(null);
+  
   const [speechSupported, setSpeechSupported] = useState(true);
   const [ttsSupported, setTtsSupported] = useState(true);
   const [isBraveBrowser, setIsBraveBrowser] = useState(false);
   const [voiceNetworkFailed, setVoiceNetworkFailed] = useState(false);
+
+  // TTS States
+  const [availableVoices, setAvailableVoices] = useState([]);
+  const [ttsState, setTtsState] = useState(TTS_STATUS.IDLE);
+  const [ttsMessage, setTtsMessage] = useState(null);
 
   // Use refs for values that callbacks need to read (avoids stale closures)
   const fromLangRef = useRef(fromLang);
@@ -49,12 +62,13 @@ export default function LiveVoiceTranslator() {
   const recognitionRef = useRef(null);
   const isRecognizingRef = useRef(false);
   const retryCountRef = useRef(0);
+  const utteranceRef = useRef(null); // Keep a ref to prevent garbage collection bugs
 
   // Keep refs in sync with state
   useEffect(() => { fromLangRef.current = fromLang; }, [fromLang]);
   useEffect(() => { toLangRef.current = toLang; }, [toLang]);
 
-  // Check browser support on mount
+  // Check browser support and load voices on mount
   useEffect(() => {
     // Detect Brave browser
     if (navigator.brave && typeof navigator.brave.isBrave === 'function') {
@@ -69,8 +83,21 @@ export default function LiveVoiceTranslator() {
       setSpeechSupported(false);
       setErrorMessage("Voice input isn't supported by this browser. You can type your message instead.");
     }
+    
     if (!('speechSynthesis' in window)) {
       setTtsSupported(false);
+    } else {
+      const loadVoices = () => {
+        const voices = window.speechSynthesis.getVoices();
+        if (voices && voices.length > 0) {
+          setAvailableVoices(voices);
+        }
+      };
+
+      loadVoices();
+      if (window.speechSynthesis.onvoiceschanged !== undefined) {
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+      }
     }
 
     return () => {
@@ -80,8 +107,22 @@ export default function LiveVoiceTranslator() {
         recognitionRef.current = null;
       }
       isRecognizingRef.current = false;
+      
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+      utteranceRef.current = null;
     };
   }, []);
+
+  // Clear TTS message and stop audio when language changes or new translation starts
+  useEffect(() => {
+    setTtsMessage(null);
+    setTtsState(TTS_STATUS.IDLE);
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+  }, [toLang, outputText]);
 
   const handleTranslation = useCallback(async (text, source, target) => {
     if (!text || !text.trim()) return;
@@ -104,6 +145,12 @@ export default function LiveVoiceTranslator() {
       return;
     }
 
+    // Cancel any ongoing TTS before listening
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+      setTtsState(TTS_STATUS.IDLE);
+    }
+
     // Prevent excessive retries (max 3 before asking user to use text)
     if (retryCountRef.current >= 3) {
       setVoiceNetworkFailed(true);
@@ -119,6 +166,7 @@ export default function LiveVoiceTranslator() {
     }
 
     setErrorMessage(null);
+    setTtsMessage(null);
     setVoiceNetworkFailed(false);
 
     try {
@@ -237,28 +285,93 @@ export default function LiveVoiceTranslator() {
       handleTranslation(inputText, fromLang, toLang);
     }
   };
+  
+  const getBestVoiceForLanguage = useCallback((langCode) => {
+    if (!langCode || availableVoices.length === 0) return null;
+    
+    // Normalize code format to BCP-47 with hyphens just in case
+    const normalizedCode = langCode.replace('_', '-').toLowerCase();
+    
+    // 1. Try exact match (e.g., 'mr-in')
+    let voice = availableVoices.find(v => v.lang && v.lang.replace('_', '-').toLowerCase() === normalizedCode);
+    if (voice) return voice;
+
+    // 2. Try base language (e.g., 'mr' from 'mr-in')
+    const baseLang = normalizedCode.split('-')[0];
+    voice = availableVoices.find(v => v.lang && v.lang.replace('_', '-').toLowerCase().startsWith(baseLang));
+    return voice || null;
+  }, [availableVoices]);
 
   const playTranslation = () => {
     if (!outputText || !ttsSupported) {
       if (!ttsSupported) setErrorMessage('Text-to-speech is not supported in this browser.');
       return;
     }
-
+    
+    // Stop any ongoing speech
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(outputText);
-    const selectedLang = SUPPORTED_LANGUAGES.find(l => l.code === toLang);
-    utterance.lang = selectedLang?.voiceCode || 'en-IN';
-    utterance.rate = 0.9;
+    setTtsMessage(null);
 
-    utterance.onerror = () => {
-      setErrorMessage('Could not play audio. The voice for this language may not be available on your device.');
+    const selectedLang = SUPPORTED_LANGUAGES.find(l => l.code === toLang);
+    const targetVoiceCode = selectedLang?.voiceCode || 'en-IN';
+    
+    const voice = getBestVoiceForLanguage(targetVoiceCode);
+
+    if (!voice) {
+      // Voice unavailable on this device, inform user gracefully without throwing error
+      setTtsMessage(`Voice output for ${selectedLang?.name} isn't available on this device.`);
+      setTtsState(TTS_STATUS.UNAVAILABLE);
+      return;
+    }
+
+    setTtsState(TTS_STATUS.SPEAKING);
+
+    // Create a NEW utterance for reliable language switching
+    const utterance = new SpeechSynthesisUtterance(outputText);
+    utterance.lang = targetVoiceCode;
+    utterance.voice = voice;
+    utterance.rate = 0.9; // Slightly slower for better clarity
+
+    utterance.onstart = () => {
+      setTtsState(TTS_STATUS.SPEAKING);
     };
 
+    utterance.onend = () => {
+      setTtsState(TTS_STATUS.IDLE);
+      utteranceRef.current = null; // Free reference
+    };
+
+    utterance.onerror = (e) => {
+      // Ignore errors when we deliberately cancel speech
+      if (e.error === 'interrupted' || e.error === 'canceled') {
+        setTtsState(TTS_STATUS.IDLE);
+        return;
+      }
+      
+      console.error('Speech synthesis error:', e);
+      setTtsState(TTS_STATUS.ERROR);
+      setTtsMessage('Audio playback failed. Please try again.');
+      window.speechSynthesis.cancel();
+      utteranceRef.current = null;
+    };
+
+    // Keep reference to avoid garbage collection before playback finishes in some browsers
+    utteranceRef.current = utterance;
+    
     window.speechSynthesis.speak(utterance);
+  };
+  
+  const stopTranslation = () => {
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    setTtsState(TTS_STATUS.IDLE);
   };
 
   const isListening = status === STATUS.LISTENING;
   const isProcessing = status === STATUS.PROCESSING || status === STATUS.TRANSLATING;
+  const isSpeaking = ttsState === TTS_STATUS.SPEAKING;
+  
   const fromLangObj = SUPPORTED_LANGUAGES.find(l => l.code === fromLang);
   const toLangObj = SUPPORTED_LANGUAGES.find(l => l.code === toLang);
 
@@ -347,6 +460,14 @@ export default function LiveVoiceTranslator() {
         </div>
       )}
 
+      {/* TTS Messages (like unavailability) */}
+      {ttsMessage && (
+        <div style={{ background: 'var(--surface-variant)', color: 'var(--on-surface-variant)', padding: '12px', borderRadius: '10px', marginBottom: '16px', fontSize: 14, display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+          <span className="material-symbols-outlined" style={{ fontSize: 20, flexShrink: 0, marginTop: '1px' }}>volume_off</span>
+          <span>{ttsMessage}</span>
+        </div>
+      )}
+
       {/* Text Input Fallback */}
       <div style={{ marginBottom: '20px' }}>
         <div style={{ display: 'flex', gap: '8px' }}>
@@ -379,18 +500,18 @@ export default function LiveVoiceTranslator() {
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '24px' }}>
           <button
             onClick={isListening ? handleStopListening : handleStartListening}
-            disabled={isProcessing}
+            disabled={isProcessing || isSpeaking}
             style={{
               width: '88px',
               height: '88px',
               borderRadius: '50%',
-              background: isListening ? '#ef4444' : isProcessing ? 'var(--surface-variant)' : 'var(--primary)',
+              background: isListening ? '#ef4444' : isProcessing || isSpeaking ? 'var(--surface-variant)' : 'var(--primary)',
               color: 'white',
               border: isListening ? '4px solid rgba(239,68,68,0.3)' : '4px solid transparent',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              cursor: isProcessing ? 'default' : 'pointer',
+              cursor: isProcessing || isSpeaking ? 'default' : 'pointer',
               boxShadow: isListening ? '0 0 0 8px rgba(239,68,68,0.15), 0 4px 16px rgba(0,0,0,0.2)' : '0 4px 16px rgba(0,0,0,0.15)',
               marginBottom: '12px',
               transition: 'all 0.3s ease',
@@ -443,26 +564,33 @@ export default function LiveVoiceTranslator() {
             <div style={{ padding: '12px 16px 16px', borderTop: '1px solid var(--outline-variant)', display: 'flex', gap: '10px' }}>
               {ttsSupported && (
                 <button
-                  onClick={playTranslation}
+                  onClick={isSpeaking ? stopTranslation : playTranslation}
                   style={{
                     flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                    padding: '12px', borderRadius: '12px', border: '1px solid var(--outline-variant)',
-                    background: 'var(--surface)', color: 'var(--on-surface)', cursor: 'pointer',
+                    padding: '12px', borderRadius: '12px', border: isSpeaking ? '1px solid var(--primary)' : '1px solid var(--outline-variant)',
+                    background: isSpeaking ? 'var(--primary-container)' : 'var(--surface)', 
+                    color: isSpeaking ? 'var(--on-primary-container)' : 'var(--on-surface)', 
+                    cursor: 'pointer',
                     fontWeight: 600, fontSize: 13
                   }}
                 >
-                  <span className="material-symbols-outlined" style={{ fontSize: 20 }}>volume_up</span>
-                  Play
+                  <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
+                    {isSpeaking ? 'stop_circle' : 'volume_up'}
+                  </span>
+                  {isSpeaking ? 'Stop' : 'Play'}
                 </button>
               )}
 
               {speechSupported && (
                 <button
                   onClick={handleStartListening}
+                  disabled={isSpeaking}
                   style={{
                     flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                     padding: '12px', borderRadius: '12px', border: 'none',
-                    background: 'var(--primary)', color: 'white', cursor: 'pointer',
+                    background: isSpeaking ? 'var(--surface-variant)' : 'var(--primary)', 
+                    color: isSpeaking ? 'var(--on-surface-variant)' : 'white', 
+                    cursor: isSpeaking ? 'default' : 'pointer',
                     fontWeight: 600, fontSize: 13
                   }}
                 >

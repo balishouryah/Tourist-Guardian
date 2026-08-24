@@ -1,7 +1,8 @@
 import React, { useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
+import { DEMO_MAP_DATA } from '../../utils/mockMapData';
 
 // Fix for default Leaflet marker icons not loading in Vite
 delete L.Icon.Default.prototype._getIconUrl;
@@ -79,6 +80,7 @@ export default function LiveTouristLeaflet({
   incidents = [], 
   selectedTouristId = null,
   onTouristSelect = () => {},
+  onTouristViewAction = null,
   followMode = false,
   triggerFitBounds = 0 // changing this number triggers fitbounds
 }) {
@@ -141,6 +143,23 @@ export default function LiveTouristLeaflet({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
+        {/* Zones */}
+        {DEMO_MAP_DATA.zones.map((zone) => (
+          <Circle
+            key={zone.id}
+            center={zone.center}
+            radius={zone.radius}
+            pathOptions={{ 
+              color: zone.type === 'safe' ? '#16a34a' : (zone.type === 'caution' ? '#eab308' : '#dc2626'),
+              fillColor: zone.type === 'safe' ? '#dcfce7' : (zone.type === 'caution' ? '#fef08a' : '#fecaca'),
+              fillOpacity: zone.type === 'safe' ? 0.2 : 0.4,
+              weight: 2
+            }}
+          >
+            <Popup>{zone.label}</Popup>
+          </Circle>
+        ))}
+
         <MapController 
           tourists={tourists} 
           incidents={incidents} 
@@ -165,11 +184,56 @@ export default function LiveTouristLeaflet({
                 }}
               >
                 <Popup>
-                  <strong>{t.name || 'Unknown Tourist'}</strong> {t.isDemo && '(DEMO)'}
-                  <br/>
-                  {getSeverityLabel(t.severity)}
-                  <br/>
-                  <span style={{ fontSize: '11px', color: '#666' }}>ID: {t.safety_id || t.id}</span>
+                  <div style={{ padding: '4px', minWidth: '180px' }}>
+                    <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '2px' }}>
+                      {t.name?.toUpperCase() || 'UNKNOWN'} {t.isDemo && '(DEMO)'}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#666', fontFamily: 'monospace', marginBottom: '8px' }}>
+                      {t.safety_id || t.id}
+                    </div>
+                    
+                    <div style={{ 
+                      fontSize: '11px', 
+                      fontWeight: 'bold', 
+                      color: t.severity === 'CRITICAL' ? '#dc2626' : t.severity === 'HIGH_RISK' || t.severity === 'HIGH' ? '#f97316' : t.severity === 'CAUTION' ? '#eab308' : '#16a34a',
+                      marginBottom: '4px'
+                    }}>
+                      {getSeverityLabel(t.severity)}
+                    </div>
+                    
+                    {t.score !== undefined && (
+                      <div style={{ fontSize: '12px', marginBottom: '4px' }}>
+                        Safety Score: <strong>{t.score}/100</strong>
+                      </div>
+                    )}
+                    
+                    {t.last_location_update && (
+                      <div style={{ fontSize: '11px', color: '#666', marginBottom: '10px' }}>
+                        Last update:<br/>
+                        {new Date(Date.now() - new Date(t.last_location_update).getTime()).getMinutes() < 2 ? 'Just now' : `${Math.floor((Date.now() - new Date(t.last_location_update).getTime()) / 60000)} minutes ago`}
+                      </div>
+                    )}
+
+                    {onTouristViewAction && (
+                      <button 
+                        onClick={() => onTouristViewAction(t.id)}
+                        style={{
+                          width: '100%',
+                          background: 'var(--primary)',
+                          color: '#fff',
+                          border: 'none',
+                          padding: '6px 0',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          fontWeight: 'bold',
+                          cursor: 'pointer',
+                          textTransform: 'uppercase'
+                        }}
+                      >
+                        View Tourist
+                      </button>
+                    )}
+                  </div>
                 </Popup>
               </Marker>
             );

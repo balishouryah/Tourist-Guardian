@@ -54,7 +54,7 @@ export function AuthorityRealtimeProvider({ children }) {
         const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
         const { data, error } = await authoritySupabase
           .from('tourists')
-          .select('id, name, safety_id, current_latitude, current_longitude, last_location_update, current_safety_score, current_safety_severity')
+          .select('id, name, safety_id, current_latitude, current_longitude, last_location_update, current_safety_score, current_safety_severity, current_safety_signals')
           .gte('last_location_update', fiveMinutesAgo);
 
         if (error) {

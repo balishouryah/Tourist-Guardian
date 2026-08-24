@@ -1,0 +1,130 @@
+.kyc-center-screen {
+  padding: 24px;
+}
+
+.kyc-tabs {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--outline-variant);
+  padding-bottom: 16px;
+}
+
+.kyc-tab {
+  background: none;
+  border: none;
+  color: var(--on-surface-variant);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 16px;
+  cursor: pointer;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.kyc-tab:hover {
+  background: var(--surface-variant);
+}
+
+.kyc-tab.active {
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+}
+
+.kyc-badge {
+  background: var(--error);
+  color: white;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 12px;
+}
+
+.kyc-empty {
+  text-align: center;
+  padding: 48px;
+  color: var(--on-surface-variant);
+}
+
+.kyc-empty .material-symbols-outlined {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.kyc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.kyc-card {
+  background: var(--surface);
+  border-radius: 16px;
+  border: 1px solid var(--outline-variant);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  display: flex;
+  flex-direction: column;
+}
+
+.kyc-card-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--outline-variant);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.kyc-tourist-name {
+  margin: 0 0 4px 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.kyc-tourist-id {
+  font-family: monospace;
+  font-size: 12px;
+  color: var(--on-surface-variant);
+}
+
+.kyc-status-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.kyc-status-badge.pending { background: var(--caution-bg); color: var(--caution); border: 1px solid var(--caution); }
+.kyc-status-badge.verified { background: var(--safe-bg); color: var(--safe); border: 1px solid var(--safe); }
+.kyc-status-badge.rejected { background: var(--error-container); color: var(--error); border: 1px solid var(--error); }
+
+.kyc-card-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.kyc-info-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.kyc-info-row span {
+  color: var(--on-surface-variant);
+}
+
+.kyc-info-row strong {
+  color: var(--on-surface);
+}
+
+.kyc-card-footer {
+  padding: 16px;
+  background: var(--surface-variant);
+  border-bottom-left-radius: 16px;
+  border-bottom-right-radius: 16px;
+}

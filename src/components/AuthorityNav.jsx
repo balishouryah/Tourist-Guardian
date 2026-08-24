@@ -4,6 +4,8 @@ import './AuthorityNav.css';
 
 const links = [
   { path: '/authority/dashboard',    label: 'Dashboard' },
+  { path: '/authority/risk-center',  label: 'AI Risk' },
+  { path: '/authority/kyc',          label: 'KYC Center' },
   { path: '/authority/map',          label: 'Live Map' },
 ];
 

@@ -137,6 +137,60 @@ export default function Dashboard() {
         )}
       </div>
 
+      {/* AI Risk Warnings (Phase 5) */}
+      {!isDemoMode && (scoreLabel === 'CAUTION' || scoreLabel === 'HIGH RISK' || scoreLabel === 'CRITICAL') && (
+        <div className="card" style={{ marginBottom: '16px', padding: 0, overflow: 'hidden', border: `1px solid ${scoreLabel === 'CRITICAL' ? 'var(--error)' : 'var(--caution)'}` }}>
+          <div style={{ padding: '12px 16px', background: scoreLabel === 'CRITICAL' ? 'var(--error-container)' : 'var(--caution-bg)' }}>
+            <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', color: scoreLabel === 'CRITICAL' ? 'var(--error)' : 'var(--caution)' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+                {scoreLabel === 'CRITICAL' ? 'emergency' : 'warning'}
+              </span>
+              {scoreLabel === 'CRITICAL' ? 'POSSIBLE DISTRESS DETECTED' : 'SAFETY WARNING'}
+            </h3>
+          </div>
+          <div style={{ padding: '16px' }}>
+            <p style={{ margin: '0 0 16px 0', fontSize: 14, fontWeight: 500 }}>
+              {scoreLabel === 'CRITICAL' 
+                ? 'Your recent movement suggests you may need assistance.' 
+                : 'We noticed unusual movement or inactivity.'}
+            </p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {scoreLabel !== 'CRITICAL' && (
+                <button className="btn btn-secondary" style={{ width: '100%', padding: '12px', fontSize: 14, fontWeight: 700 }} onClick={() => navigate('/tourist/map')}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 18, marginRight: 8 }}>map</span>
+                  VIEW SAFETY MAP
+                </button>
+              )}
+              
+              <EmergencyPoliceButton phoneNumber="112" />
+              
+              <button 
+                onClick={() => navigate('/tourist/sos')}
+                style={{
+                  width: '100%',
+                  background: 'var(--error)',
+                  color: '#fff',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  fontWeight: 700,
+                  fontSize: '15px',
+                  border: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  cursor: 'pointer'
+                }}
+              >
+                <span className="material-symbols-outlined icon-filled" style={{ fontSize: 20 }}>emergency_share</span>
+                SEND SOS
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Safety Zone Status (LIVE MODE ONLY) */}
       {!isDemoMode && (
         <div className="card" style={{ marginBottom: '16px', padding: 0, overflow: 'hidden', border: `1px solid ${liveSafety?.currentZone?.type === 'DANGER' ? 'var(--error)' : liveSafety?.currentZone?.type === 'CAUTION' ? 'var(--caution)' : 'var(--safe)'}` }}>
@@ -204,6 +258,11 @@ export default function Dashboard() {
                 {liveSafety?.testZone && (
                   <button onClick={() => liveSafety?.clearTestZone()} className="btn btn-secondary" style={{ marginTop: '12px', fontSize: 12, padding: '6px' }}>
                     [DEV] Clear Test Zone
+                  </button>
+                )}
+                {process.env.NODE_ENV === 'development' && liveSafety?.resetSafetyState && (
+                  <button onClick={() => liveSafety?.resetSafetyState()} className="btn btn-secondary" style={{ marginTop: '12px', fontSize: 12, padding: '6px', background: 'var(--surface-variant)', color: 'var(--on-surface-variant)', border: 'none' }}>
+                    [DEV] Reset Safety State
                   </button>
                 )}
               </>
