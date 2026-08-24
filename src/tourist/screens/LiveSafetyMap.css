@@ -1,0 +1,64 @@
+.tourist-map-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: var(--background);
+  position: relative;
+}
+
+.tourist-map-header-bar {
+  display: flex;
+  align-items: center;
+  padding: var(--space-md) var(--space-lg);
+  background-color: var(--surface);
+  border-bottom: 1px solid var(--border);
+  z-index: 10;
+}
+
+.tourist-map-back {
+  background: none;
+  border: none;
+  color: var(--on-surface);
+  padding: 0;
+  margin-right: var(--space-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.tourist-map-title {
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--on-surface);
+}
+
+.tourist-map-content {
+  flex: 1;
+  position: relative;
+}
+
+.tourist-map-overlay-bottom {
+  position: absolute;
+  bottom: var(--space-xl);
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  z-index: 400; /* Above Leaflet map (z-index 1) but below popups */
+  pointer-events: none;
+}
+
+.tourist-map-status-pill {
+  background-color: var(--surface);
+  color: var(--on-surface);
+  padding: var(--space-sm) var(--space-lg);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: 14px;
+  font-weight: 600;
+  pointer-events: auto;
+}

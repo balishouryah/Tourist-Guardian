@@ -1,14 +1,21 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { useAuthorityAuth } from '../authority/utils/AuthorityAuthContext';
 import './AuthorityNav.css';
 
 const links = [
   { path: '/authority/dashboard',    label: 'Dashboard' },
-  { path: '/authority/map',          label: 'Map' },
-  { path: '/authority/risk-center',  label: 'Analytics' },
-  { path: '/authority/intelligence', label: 'Incidents' },
+  { path: '/authority/map',          label: 'Live Map' },
 ];
 
 export default function AuthorityNav() {
+  const { logout, authorityProfile } = useAuthorityAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/authority/login', { replace: true });
+  };
+
   return (
     <nav className="authority-nav" aria-label="Authority navigation">
       <NavLink to="/authority/dashboard" className="authority-nav-brand">
@@ -30,20 +37,23 @@ export default function AuthorityNav() {
       </div>
 
       <div className="authority-nav-actions">
-        {/* Notification bell with red dot */}
-        <button className="authority-nav-icon-btn" aria-label="Notifications">
-          <span className="material-symbols-outlined">notifications</span>
-          <span className="authority-nav-notification-dot" />
-        </button>
+        {/* System status icon - now just an indicator */}
+        <div className="authority-nav-icon-btn" aria-label="System status" style={{ cursor: 'default' }}>
+          <span className="material-symbols-outlined icon-filled" style={{ color: 'var(--safe)' }}>verified_user</span>
+        </div>
 
-        {/* Shield / system status icon */}
-        <button className="authority-nav-icon-btn" aria-label="System status">
-          <span className="material-symbols-outlined icon-filled">shield</span>
-        </button>
-
-        {/* Avatar */}
-        <div className="authority-nav-avatar" aria-label="User profile">
-          OC
+        {/* Profile / Logout */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div className="authority-nav-avatar" aria-label="User profile" title={authorityProfile?.display_name || 'Operator'}>
+            {authorityProfile?.display_name ? authorityProfile.display_name.charAt(0) : 'OC'}
+          </div>
+          <button 
+            className="btn btn-secondary" 
+            onClick={handleLogout}
+            style={{ padding: '6px 12px', fontSize: '12px' }}
+          >
+            Logout
+          </button>
         </div>
       </div>
     </nav>

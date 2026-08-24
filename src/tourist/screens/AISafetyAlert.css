@@ -1,0 +1,205 @@
+.ai-alert-screen {
+  animation: fade-in 0.3s ease-out;
+}
+
+/* Pulsing red top bar */
+.ai-alert-top-bar {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: var(--tourist-max-width);
+  height: 4px;
+  background: var(--error);
+  animation: pulse-bg 2s ease-in-out infinite;
+  z-index: 50;
+}
+
+/* Main card */
+.ai-alert-card {
+  background: var(--surface-container-lowest);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-emergency);
+  border: 1px solid rgba(186, 26, 26, 0.15);
+  padding: var(--space-lg);
+  margin-top: var(--space-xs);
+}
+
+/* Icon */
+.ai-alert-icon-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--space-md);
+}
+
+.ai-alert-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-full);
+  background: var(--error-container);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 20px rgba(186, 26, 26, 0.3);
+}
+
+.ai-alert-icon .material-symbols-outlined {
+  font-size: 36px;
+  color: var(--error);
+}
+
+/* Title */
+.ai-alert-title {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 32px;
+  color: var(--error);
+  text-align: center;
+  margin-bottom: var(--space-xs);
+}
+
+.ai-alert-desc {
+  font-size: 16px;
+  color: var(--on-surface-variant);
+  text-align: center;
+  margin-bottom: var(--space-lg);
+  line-height: 24px;
+}
+
+/* Detected signals */
+.ai-alert-signals {
+  background: var(--surface-container-low);
+  border-radius: var(--radius);
+  padding: var(--space-md);
+  border-left: 4px solid var(--error);
+  margin-bottom: var(--space-lg);
+}
+
+.ai-alert-signals-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--on-surface);
+  margin-bottom: var(--space-sm);
+}
+
+.ai-alert-signals-title .material-symbols-outlined {
+  font-size: 18px;
+}
+
+.ai-alert-signal-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-xs) 0;
+}
+
+.ai-alert-signal-item + .ai-alert-signal-item {
+  border-top: 1px solid rgba(198, 198, 205, 0.3);
+}
+
+.ai-alert-signal-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: 16px;
+  color: var(--on-surface);
+}
+
+.ai-alert-signal-left .material-symbols-outlined {
+  font-size: 16px;
+  color: var(--on-surface-variant);
+}
+
+.ai-alert-signal-value {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--error);
+  letter-spacing: 0.02em;
+}
+
+/* Action buttons */
+.ai-alert-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.ai-alert-safe-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--secondary-container);
+  color: var(--on-secondary-container);
+  border-radius: var(--radius);
+  font-size: 20px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.ai-alert-safe-btn:hover {
+  background: var(--secondary);
+  color: var(--on-secondary);
+}
+
+.ai-alert-help-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--surface-container-lowest);
+  color: var(--primary);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius);
+  font-size: 20px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.ai-alert-help-btn:hover {
+  border-color: var(--primary);
+}
+
+.ai-alert-sos-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  padding: var(--space-md) var(--space-lg);
+  background: var(--error);
+  color: var(--on-error);
+  border-radius: var(--radius);
+  font-size: 20px;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(186, 26, 26, 0.3);
+  margin-top: var(--space-sm);
+  transition: all 0.2s ease;
+}
+
+.ai-alert-sos-btn:hover {
+  background: var(--on-error-container);
+}
+
+.ai-alert-sos-btn .material-symbols-outlined {
+  font-size: 26px;
+}
+
+/* Countdown */
+.ai-alert-countdown {
+  text-align: center;
+  margin-top: var(--space-md);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--on-surface-variant);
+}

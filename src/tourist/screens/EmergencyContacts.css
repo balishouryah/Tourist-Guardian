@@ -1,0 +1,181 @@
+.ec-screen {
+  background-color: var(--background);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.ec-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: env(safe-area-inset-top, var(--space-md)) var(--space-md) var(--space-md);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.ec-back-btn {
+  background: none;
+  border: none;
+  color: var(--on-surface);
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ec-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--on-surface);
+}
+
+.ec-content {
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  flex: 1;
+}
+
+.ec-desc {
+  font-size: 14px;
+  color: var(--secondary);
+  line-height: 1.5;
+}
+
+.ec-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.ec-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ec-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ec-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--on-surface);
+}
+
+.ec-rel {
+  font-size: 13px;
+  color: var(--secondary);
+}
+
+.ec-phone {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary);
+  margin-top: 4px;
+}
+
+.ec-del-btn {
+  background: rgba(248, 113, 113, 0.1);
+  color: var(--error);
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.ec-empty {
+  text-align: center;
+  padding: var(--space-xl);
+  color: var(--secondary);
+  font-size: 14px;
+}
+
+.ec-add-btn {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  margin-top: var(--space-md);
+}
+
+.ec-add-form {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  margin-top: var(--space-md);
+}
+
+.ec-form-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--on-surface);
+  margin-bottom: 8px;
+}
+
+.ec-input {
+  background: var(--background);
+  border: 1px solid var(--border);
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  color: var(--on-surface);
+  outline: none;
+}
+.ec-input:focus {
+  border-color: var(--primary);
+}
+
+.ec-form-actions {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: 8px;
+}
+
+.ec-cancel-btn {
+  flex: 1;
+  background: var(--surface-variant);
+  color: var(--on-surface);
+  border: none;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ec-save-btn {
+  flex: 1;
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  cursor: pointer;
+}

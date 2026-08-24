@@ -1,0 +1,198 @@
+.area-warning-screen {
+  animation: fade-in 0.3s ease-out;
+}
+
+/* Warning icon */
+.area-warning-icon-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--space-md);
+}
+
+.area-warning-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-full);
+  background: var(--error-container);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.area-warning-icon .material-symbols-outlined {
+  font-size: 32px;
+  color: var(--error);
+}
+
+/* Title */
+.area-warning-title {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 32px;
+  color: var(--error);
+  text-align: center;
+  margin-bottom: var(--space-base);
+}
+
+.area-warning-location {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--on-surface);
+  text-align: center;
+  margin-bottom: var(--space-base);
+}
+
+.area-warning-date {
+  font-size: 14px;
+  color: var(--on-surface-variant);
+  text-align: center;
+  margin-bottom: var(--space-lg);
+}
+
+/* Score card */
+.area-warning-score-card {
+  background: var(--surface-container-lowest);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md) var(--space-lg);
+  box-shadow: var(--shadow-card);
+  border-left: 4px solid var(--caution);
+  margin-bottom: var(--space-md);
+  text-align: center;
+}
+
+.area-warning-score-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--on-surface-variant);
+  margin-bottom: var(--space-xs);
+}
+
+.area-warning-score-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-sm);
+}
+
+.area-warning-score-number {
+  font-size: 48px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--caution);
+}
+
+.area-warning-score-max {
+  font-size: 18px;
+  color: var(--on-surface-variant);
+}
+
+/* Score bar */
+.area-warning-score-bar {
+  height: 6px;
+  background: var(--surface-container-high);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.area-warning-score-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: linear-gradient(90deg, var(--error) 0%, var(--caution) 64%, var(--surface-container-high) 64%);
+}
+
+/* Concerns card */
+.area-warning-concerns {
+  background: var(--surface-container-lowest);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  box-shadow: var(--shadow-card);
+  border-left: 4px solid var(--on-surface-variant);
+  margin-bottom: var(--space-md);
+}
+
+.area-warning-concerns-title {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--on-surface-variant);
+  margin-bottom: var(--space-sm);
+}
+
+.area-warning-concern-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) 0;
+  font-size: 15px;
+  color: var(--on-surface);
+}
+
+.area-warning-concern-item + .area-warning-concern-item {
+  border-top: 1px solid var(--outline-variant);
+}
+
+.area-warning-concern-item .material-symbols-outlined {
+  font-size: 20px;
+  color: var(--on-surface-variant);
+}
+
+/* Required actions */
+.area-warning-actions-card {
+  background: var(--surface-container-lowest);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  box-shadow: var(--shadow-card);
+  border-left: 4px solid var(--secondary);
+  margin-bottom: var(--space-lg);
+}
+
+.area-warning-actions-title {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--on-surface-variant);
+  margin-bottom: var(--space-sm);
+}
+
+.area-warning-action-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-sm);
+  background: var(--surface-container-low);
+  border-radius: var(--radius);
+  margin-bottom: var(--space-xs);
+}
+
+.area-warning-action-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.area-warning-action-left .material-symbols-outlined {
+  font-size: 20px;
+  color: var(--secondary);
+}
+
+.area-warning-action-text {
+  font-size: 14px;
+  color: var(--on-surface);
+}
+
+.area-warning-action-btn {
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--primary-container);
+  color: var(--on-primary);
+}
+
+/* CTA */
+.area-warning-cta {
+  margin-bottom: var(--space-md);
+}

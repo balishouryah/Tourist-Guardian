@@ -1,4 +1,109 @@
-import Placeholder from '../../components/Placeholder';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../utils/AuthContext';
+import './SafetyCredential.css';
+
 export default function SafetyCredential() {
-  return <Placeholder title="Digital Safety Credential" stage="6" />;
+  const navigate = useNavigate();
+  const { touristProfile: profile, loading } = useAuth();
+  const profileError = !loading && profile === null;
+
+  if (profileError) {
+    return (
+      <div className="credential-screen animate-fade-in" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', padding: 'var(--space-xl)' }}>
+        <span className="material-symbols-outlined" style={{ fontSize: 64, color: 'var(--error)', marginBottom: 'var(--space-md)' }}>error</span>
+        <h2 style={{ fontSize: 24, marginBottom: 'var(--space-sm)' }}>Profile Not Found</h2>
+        <p style={{ color: 'var(--on-surface-variant)', marginBottom: 'var(--space-lg)' }}>
+          Your digital credential could not be loaded. Please complete your profile setup.
+        </p>
+        <button className="btn btn-primary" onClick={() => navigate('/tourist/onboarding')}>
+          Complete Profile Setup
+        </button>
+      </div>
+    );
+  }
+
+  if (!profile) return <div className="credential-screen" style={{display:'flex',justifyContent:'center',alignItems:'center'}}>Loading...</div>;
+
+  const initials = profile.name.split(' ').map(n => n[0]).join('').substring(0, 2);
+
+  return (
+    <div className="credential-screen animate-fade-in">
+      <div className="credential-header">
+        <h1 className="credential-title">Digital Safety ID</h1>
+        <p className="credential-subtitle">Prototype verification credential for authorities</p>
+      </div>
+
+      <div className="credential-card">
+        <div className="credential-card-header">
+          <span className="credential-brand">Tourist<br/>Guardian</span>
+          <span className="credential-badge">PROTOTYPE VERIFIED</span>
+        </div>
+
+        <div className="credential-body">
+          <div className="credential-photo" style={{ overflow: 'hidden' }}>
+            {profile.profile_photo_url ? (
+              <img src={profile.profile_photo_url} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              initials
+            )}
+          </div>
+          <div className="credential-info">
+            <div className="credential-name">{profile.name}</div>
+            
+            <div className="credential-field">
+              <div className="credential-label">Safety ID Number</div>
+              <div className="credential-value" style={{ fontFamily: 'monospace' }}>{profile.safety_id || profile.id}</div>
+            </div>
+            
+            <div className="credential-field">
+              <div className="credential-label">Nationality</div>
+              <div className="credential-value">{profile.nationality || 'India'}</div>
+            </div>
+
+            {profile.planned_destination && (
+              <div className="credential-field">
+                <div className="credential-label">Destination</div>
+                <div className="credential-value">{profile.planned_destination}</div>
+              </div>
+            )}
+            
+            {profile.trip_start_date && profile.trip_end_date && (
+              <div className="credential-field">
+                <div className="credential-label">Travel Dates</div>
+                <div className="credential-value">{profile.trip_start_date} to {profile.trip_end_date}</div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="credential-footer">
+          <div>
+            <div className="credential-label">Status</div>
+            <div className="credential-status">
+              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>verified_user</span>
+              ACTIVE SECURE
+            </div>
+          </div>
+          <div className="credential-qr-placeholder">
+            <span className="material-symbols-outlined" style={{ color: 'var(--primary)', fontSize: 32 }}>qr_code_2</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="credential-actions">
+        <button className="btn btn-secondary btn-full">
+          <span className="material-symbols-outlined" style={{ fontSize: 18 }}>download</span>
+          Download PDF Copy
+        </button>
+        <button className="btn btn-interactive btn-full">
+          <span className="material-symbols-outlined" style={{ fontSize: 18 }}>share</span>
+          Share Secure Link
+        </button>
+      </div>
+      
+      <p style={{ marginTop: 'var(--space-2xl)', fontSize: 12, color: 'var(--on-surface-variant)', textAlign: 'center', opacity: 0.7 }}>
+        This is a prototype credential for the hackathon demo. It does not contain real PII or blockchain verification.
+      </p>
+    </div>
+  );
 }

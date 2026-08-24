@@ -1,0 +1,113 @@
+.authority-login-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--surface);
+  padding: var(--space-md);
+  font-family: var(--font-family);
+  color: var(--on-surface);
+}
+
+.authority-login-container {
+  width: 100%;
+  max-width: 480px;
+  background-color: var(--surface-variant);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--outline-variant);
+}
+
+.authority-login-header {
+  text-align: center;
+  margin-bottom: var(--space-xl);
+}
+
+.authority-brand {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--primary);
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+.authority-subtitle {
+  font-size: 16px;
+  color: var(--on-surface-variant);
+  margin-top: var(--space-xs);
+}
+
+.authority-form-group {
+  margin-bottom: var(--space-lg);
+}
+
+.authority-input-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--on-surface);
+  margin-bottom: var(--space-xs);
+}
+
+.authority-input-field {
+  width: 100%;
+  padding: 12px 16px;
+  background-color: var(--surface);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-md);
+  color: var(--on-surface);
+  font-size: 16px;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.authority-input-field:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.authority-btn {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: opacity 0.2s;
+}
+
+.authority-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.authority-btn-primary {
+  background-color: var(--primary);
+  color: var(--on-primary);
+}
+
+.authority-btn-secondary {
+  background-color: transparent;
+  color: var(--primary);
+  margin-top: var(--space-md);
+}
+
+.authority-message {
+  padding: 12px;
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-md);
+  font-size: 14px;
+  text-align: center;
+}
+
+.authority-message.error {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}

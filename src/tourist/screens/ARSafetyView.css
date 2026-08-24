@@ -1,0 +1,525 @@
+.ar-screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background-color: #000;
+  z-index: 999;
+}
+
+/* Background layers */
+.ar-video-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+}
+
+.ar-demo-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ar-demo-grid {
+  position: absolute;
+  width: 200%;
+  height: 200%;
+  background-image: 
+    linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+  transform: perspective(500px) rotateX(60deg);
+  transform-origin: center top;
+  z-index: 2;
+  animation: gridMove 20s linear infinite;
+}
+
+@keyframes gridMove {
+  from { transform: perspective(500px) rotateX(60deg) translateY(0); }
+  to { transform: perspective(500px) rotateX(60deg) translateY(-40px); }
+}
+
+.ar-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  padding: env(safe-area-inset-top, var(--space-md)) var(--space-md) env(safe-area-inset-bottom, var(--space-md));
+}
+
+/* Top Bar: Technical Status & Controls */
+.ar-top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.ar-back-btn {
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  touch-action: manipulation;
+  -webkit-appearance: none;
+}
+
+.ar-status-panel {
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.ar-status-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.ar-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.ar-status-dot.active { background: #4ade80; box-shadow: 0 0 8px #4ade80; }
+.ar-status-dot.inactive { background: #f87171; }
+.ar-status-dot.demo { background: #60a5fa; box-shadow: 0 0 8px #60a5fa; }
+
+/* 3D Space Container for AR Markers */
+.ar-viewport {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+/* AR Markers */
+.ar-marker {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(15, 23, 42, 0.85);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transition: transform 0.1s ease-out;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  text-align: center;
+}
+
+.ar-marker.safe { border-color: rgba(74, 222, 128, 0.5); }
+.ar-marker.caution { border-color: rgba(250, 204, 21, 0.5); }
+.ar-marker.danger { border-color: rgba(248, 113, 113, 0.5); }
+
+.ar-marker-icon {
+  font-size: 24px;
+  margin-bottom: 2px;
+}
+.ar-marker.safe .ar-marker-icon { color: #4ade80; }
+.ar-marker.caution .ar-marker-icon { color: #facc15; }
+.ar-marker.danger .ar-marker-icon { color: #f87171; }
+
+.ar-marker-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.ar-marker-dist {
+  font-size: 15px;
+  font-weight: 800;
+  font-family: monospace;
+}
+
+/* HUD Bottom Area */
+.ar-hud-bottom {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.ar-demo-controls {
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  display: flex;
+  gap: var(--space-sm);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ar-demo-btn {
+  background: rgba(255,255,255,0.1);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-appearance: none;
+}
+.ar-demo-btn:hover {
+  background: rgba(255,255,255,0.2);
+}
+
+.ar-safety-card {
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.ar-safety-card.critical {
+  background: var(--error);
+  color: white;
+}
+
+.ar-score-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ar-score-main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.ar-score-value {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.ar-score-label {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.ar-safety-card.safe .ar-score-value { color: var(--success); }
+.ar-safety-card.safe .ar-score-label { color: var(--success); }
+.ar-safety-card.caution .ar-score-value { color: var(--caution); }
+.ar-safety-card.caution .ar-score-label { color: var(--caution); }
+.ar-safety-card.high .ar-score-value { color: #f97316; } /* Orange */
+.ar-safety-card.high .ar-score-label { color: #f97316; }
+.ar-safety-card.critical .ar-score-value { color: white; }
+.ar-safety-card.critical .ar-score-label { color: white; }
+
+.ar-signals-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(0,0,0,0.05);
+  padding: var(--space-sm);
+  border-radius: var(--radius-md);
+}
+.ar-safety-card.critical .ar-signals-list {
+  background: rgba(0,0,0,0.2);
+}
+
+.ar-signal-item {
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.ar-signal-item::before {
+  content: '•';
+}
+
+.ar-action-row {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.ar-btn {
+  flex: 1;
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  font-size: 14px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  touch-action: manipulation;
+  -webkit-appearance: none;
+}
+
+.ar-btn-safe {
+  background: var(--surface-variant);
+  color: var(--on-surface);
+}
+.ar-btn-help {
+  background: var(--caution);
+  color: var(--on-caution);
+}
+.ar-btn-sos {
+  background: #ffffff;
+  color: var(--error);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+/* AR Destination Menu Overlay */
+.ar-dest-menu-backdrop {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(8px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-md);
+}
+
+.ar-dest-menu {
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+  color: var(--on-surface);
+}
+
+.ar-dest-menu-title {
+  font-size: 16px;
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.ar-dest-menu-btn {
+  background: rgba(0,0,0,0.05);
+  border: 1px solid rgba(0,0,0,0.1);
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-appearance: none;
+}
+.ar-dest-menu-btn:active { background: rgba(0,0,0,0.1); }
+
+/* Navigation Instruction */
+.ar-nav-instruction {
+  position: absolute;
+  top: 130px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.85);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 24px;
+  font-size: 18px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(255,255,255,0.2);
+  white-space: nowrap;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  z-index: 20;
+}
+.ar-nav-instruction.ahead {
+  background: var(--primary);
+  border-color: rgba(255,255,255,0.4);
+}
+
+/* Off-Screen Edge Indicator */
+.ar-edge-indicator {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0,0,0,0.8);
+  color: white;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid rgba(255,255,255,0.2);
+  z-index: 10;
+}
+.ar-edge-indicator.left { left: 8px; }
+.ar-edge-indicator.right { right: 8px; }
+
+/* Expanded Primary Destination Card */
+.ar-primary-dest-card {
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(8px);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  margin-bottom: var(--space-md);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  color: var(--on-surface);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ar-primary-dest-header { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 16px; }
+.ar-primary-dest-stats { display: flex; gap: 16px; font-size: 14px; font-weight: 600; color: var(--secondary); }
+.ar-primary-dest-dist { font-family: monospace; font-size: 16px; font-weight: 800; color: var(--primary); }
+
+/* Proximity Classes */
+.ar-marker.near { transform: translate(-50%, -50%) scale(1.2); z-index: 50; }
+.ar-marker.medium { transform: translate(-50%, -50%) scale(1); z-index: 40; }
+.ar-marker.far { transform: translate(-50%, -50%) scale(0.8); z-index: 30; opacity: 0.8; }
+.ar-marker.behind { opacity: 0.4; background: rgba(0,0,0,0.8); }
+
+/* Marker interactivity */
+.ar-marker { cursor: pointer; }
+.ar-marker:active { filter: brightness(0.8); }
+
+/* Route Indicator */
+.ar-route-indicator {
+  position: absolute;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(8px);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(255,255,255,0.2);
+  white-space: nowrap;
+}
+.ar-route-indicator.safe { color: var(--safe); border-color: rgba(74, 222, 128, 0.4); }
+.ar-route-indicator.danger { color: var(--error); border-color: rgba(248, 113, 113, 0.4); }
+
+/* Mini Compass */
+.ar-mini-compass {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 8px;
+  color: rgba(255,255,255,0.8);
+  font-family: monospace;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 4px;
+}
+.ar-compass-dial {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+.ar-compass-heading {
+  font-size: 16px;
+  color: white;
+}
+.ar-compass-active-dir {
+  color: var(--primary);
+  font-size: 14px;
+}
+
+/* Demo Simulation Controls */
+.ar-heading-slider-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  background: rgba(0,0,0,0.6);
+  padding: 8px;
+  border-radius: var(--radius-md);
+  margin-top: var(--space-sm);
+  color: white;
+  font-size: 12px;
+}
+.ar-heading-slider {
+  flex: 1;
+  max-width: 200px;
+}
+
+/* Expanded Status Panel */
+.ar-status-panel { cursor: pointer; position: relative; }
+.ar-status-expanded {
+  background: rgba(0,0,0,0.85);
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255,255,255,0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 150px;
+  color: white;
+  font-size: 11px;
+  text-align: right;
+  z-index: 100;
+}

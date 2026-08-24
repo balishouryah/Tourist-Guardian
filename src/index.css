@@ -426,3 +426,38 @@ input, select, textarea {
 .bg-safe-light    { background-color: var(--safe-bg); }
 .bg-caution-light { background-color: var(--caution-bg); }
 .bg-danger-light  { background-color: var(--high-risk-bg); }
+
+/* ---------- Dark Mode Theme ---------- */
+:root[data-theme="dark"] {
+  --primary:                  #bec6e0;
+  --on-primary:               #283146;
+  --primary-container:        #3e475e;
+  --on-primary-container:     #dae2f9;
+
+  --surface:                  #111318;
+  --on-surface:               #e2e2e9;
+  --surface-variant:          #44474e;
+  --on-surface-variant:       #c4c6d0;
+
+  --surface-container-lowest: #0c0e13;
+  --surface-container-low:    #191c20;
+  --surface-container:        #1d2024;
+  --surface-container-high:   #282a2f;
+
+  --outline:                  #8e9099;
+  --outline-variant:          #44474e;
+
+  /* Secondary */
+  --secondary:                #b1c5ff;
+  --on-secondary:             #002c72;
+  --secondary-container:      #0040ab;
+  --on-secondary-container:   #d9e2ff;
+
+  /* Cards/Inputs */
+  --shadow-card:              0 2px 12px rgba(0, 0, 0, 0.4);
+  --shadow-elevated:          0 8px 32px rgba(0, 0, 0, 0.5);
+
+  /* Fix specific component backgrounds inside dark mode */
+  /* If necessary, components with hardcoded white backgrounds in inline styles will need to use CSS variables. */
+}
+

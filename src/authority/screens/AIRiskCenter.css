@@ -1,0 +1,251 @@
+.ai-risk-center {
+  animation: fade-in 0.4s ease-out;
+  display: grid;
+  grid-template-columns: 350px 1fr;
+  gap: var(--space-xl);
+  height: calc(100vh - var(--authority-nav-height) - var(--space-xl) * 2);
+}
+
+/* Sidebar - Incidents List */
+.ai-risk-sidebar {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-container-lowest);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.ai-risk-sidebar-header {
+  padding: var(--space-md) var(--space-lg);
+  border-bottom: 1px solid var(--outline-variant);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ai-risk-sidebar-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--on-surface);
+}
+
+.ai-risk-badge {
+  background: var(--error-container);
+  color: var(--on-error-container);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ai-risk-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.ai-risk-incident-card {
+  background: var(--surface-container-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius);
+  padding: var(--space-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.ai-risk-incident-card:hover {
+  border-color: var(--primary);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  transform: translateY(-2px);
+}
+
+.ai-risk-incident-card.critical {
+  border-left: 4px solid var(--error);
+  background: #fffafa;
+}
+
+.ai-risk-incident-card.high {
+  border-left: 4px solid var(--caution);
+}
+
+.ai-risk-incident-card.medium {
+  border-left: 4px solid var(--secondary);
+}
+
+.ai-risk-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-xs);
+}
+
+.ai-risk-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--on-surface);
+}
+
+.ai-risk-card-time {
+  font-size: 11px;
+  color: var(--on-surface-variant);
+  font-weight: 600;
+}
+
+.ai-risk-card-location {
+  font-size: 12px;
+  color: var(--on-surface-variant);
+  margin-bottom: var(--space-sm);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.ai-risk-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-md);
+}
+
+.ai-risk-card-tag {
+  background: var(--surface-container-high);
+  color: var(--on-surface-variant);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ai-risk-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid var(--outline-variant);
+  padding-top: var(--space-sm);
+}
+
+.ai-risk-btn-sm {
+  font-size: 12px;
+  padding: 4px 12px;
+  background: var(--surface-container-high);
+  color: var(--on-surface);
+  border-radius: var(--radius);
+  font-weight: 600;
+}
+.ai-risk-btn-sm.primary {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+/* Main Area - Operations Map & Status */
+.ai-risk-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+.ai-risk-map-container {
+  flex: 1;
+  background: var(--surface-container-lowest);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ai-risk-map-header {
+  padding: var(--space-md) var(--space-lg);
+  border-bottom: 1px solid var(--outline-variant);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ai-risk-map-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--on-surface);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.ai-risk-map-filters {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.ai-risk-map-filter {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--on-surface-variant);
+  background: var(--surface-container-low);
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ai-risk-map-filter.active {
+  background: var(--secondary-container);
+  color: var(--on-secondary-container);
+}
+
+.ai-risk-map-view {
+  flex: 1;
+  background: linear-gradient(145deg, #e4eef6 0%, #d1e2f0 50%, #bacddb 100%);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* System Status Bar */
+.ai-risk-system-status {
+  background: var(--surface-container-lowest);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-md) var(--space-lg);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ai-risk-status-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.ai-risk-status-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--on-surface-variant);
+}
+
+.ai-risk-status-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--on-surface);
+}
+
+@media (max-width: 1024px) {
+  .ai-risk-center {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+  .ai-risk-map-container {
+    height: 500px;
+  }
+}
