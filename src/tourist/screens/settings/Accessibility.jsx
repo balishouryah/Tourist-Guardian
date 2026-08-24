@@ -1,16 +1,9 @@
 import { useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useAccessibility } from '../../../utils/AccessibilityContext';
 
 export default function Accessibility() {
   const navigate = useNavigate();
-  const [toggles, setToggles] = useState({
-    largeText: false,
-    highContrast: false,
-    reduceMotion: false,
-    screenReader: false
-  });
-
-  const toggle = (key) => setToggles(prev => ({ ...prev, [key]: !prev[key] }));
+  const { settings: toggles, toggleSetting: toggle } = useAccessibility();
 
   const settings = [
     { key: 'largeText', label: 'Large Text', desc: 'Increase text size across the app.' },

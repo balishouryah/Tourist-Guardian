@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { getTouristProfile } from './touristService';
+import { saveOfflineData, getOfflineData } from './offlineService';
 
 const LOCAL_STORAGE_KEY = 'tourist_emergency_contacts';
 
@@ -38,16 +39,29 @@ export async function getEmergencyContacts() {
     if (supabase) {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        // Authenticated fetch: Rely on RLS which only allows reading own contacts
-        const { data, error } = await supabase
-          .from('emergency_contacts')
-          .select('*')
-          .order('created_at', { ascending: true });
-          
-        if (data && !error) return { data, error: null };
+        const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
         
-        // Do NOT fallback to demo mode if authenticated
-        return { data: [], error: error ? error.message : 'Failed to fetch contacts' };
+        if (isOnline) {
+          // Authenticated fetch: Rely on RLS which only allows reading own contacts
+          const { data, error } = await supabase
+            .from('emergency_contacts')
+            .select('*')
+            .order('created_at', { ascending: true });
+            
+          if (data && !error) {
+            await saveOfflineData(user.id, 'contacts', data);
+            return { data, error: null };
+          }
+          
+          return { data: [], error: error ? error.message : 'Failed to fetch contacts' };
+        } else {
+          // Offline fetch
+          const cachedData = await getOfflineData(user.id, 'contacts');
+          if (cachedData) {
+            return { data: cachedData, error: null, isCached: true };
+          }
+          return { data: [], error: null }; // No cached contacts available
+        }
       }
     }
 
@@ -93,6 +107,9 @@ export async function addEmergencyContact(contact) {
           console.error('[EmergencyContactService] Backend write failed.', error.message);
           return { data: null, error: error.message };
         } else if (data) {
+          // update cache
+          const { data: existingContacts } = await getEmergencyContacts();
+          await saveOfflineData(user.id, 'contacts', existingContacts);
           return { data, error: null };
         }
       }

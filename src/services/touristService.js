@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { DEMO_TOURIST } from '../utils/constants';
+import { saveOfflineData, getOfflineData } from './offlineService';
 
 const AUTH_LOCAL_STORAGE_KEY = 'tg_auth_tourist_profile';
 const DEMO_LOCAL_STORAGE_KEY = 'tg_demo_tourist_profile';
@@ -28,20 +29,36 @@ export async function getTouristProfile() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         isAuthenticated = true;
-        const { data, error } = await supabase.from('tourists')
-          .select('*')
-          .eq('auth_user_id', user.id)
-          .maybeSingle();
-          
-        if (data && !error) {
-          // Keep a local backup of the auth profile for offline availability
-          localStorage.setItem(AUTH_LOCAL_STORAGE_KEY, JSON.stringify(data));
-          return { data, error: null };
-        }
+        const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
         
-        // If authenticated but no profile found in DB, DO NOT FALLBACK to DEMO.
-        // Return explicit NO_PROFILE error so the UI can force them to setup.
-        return { data: null, error: 'NO_PROFILE' };
+        if (isOnline) {
+          const { data, error } = await supabase.from('tourists')
+            .select('*')
+            .eq('auth_user_id', user.id)
+            .maybeSingle();
+            
+          if (data && !error) {
+            // Keep a local backup of the auth profile for offline availability
+            localStorage.setItem(AUTH_LOCAL_STORAGE_KEY, JSON.stringify(data));
+            await saveOfflineData(user.id, 'profile', data);
+            return { data, error: null };
+          }
+          
+          // If authenticated but no profile found in DB, DO NOT FALLBACK to DEMO.
+          // Return explicit NO_PROFILE error so the UI can force them to setup.
+          return { data: null, error: 'NO_PROFILE' };
+        } else {
+          // OFFLINE for authenticated user
+          const cachedData = await getOfflineData(user.id, 'profile');
+          if (cachedData) {
+            return { data: cachedData, error: null, isCached: true };
+          }
+          // Fallback to local storage if IndexedDB is empty
+          const fallback = localStorage.getItem(AUTH_LOCAL_STORAGE_KEY);
+          if (fallback) return { data: JSON.parse(fallback), error: null };
+          
+          return { data: null, error: 'NO_PROFILE' };
+        }
       }
     }
 
@@ -116,6 +133,7 @@ export async function createTouristProfile(profileData) {
           }
           if (fullExisting) {
             localStorage.setItem(AUTH_LOCAL_STORAGE_KEY, JSON.stringify(fullExisting));
+            await saveOfflineData(user.id, 'profile', fullExisting);
             return { data: fullExisting, error: null };
           }
         } else {
@@ -127,6 +145,7 @@ export async function createTouristProfile(profileData) {
           } else {
             console.log('[Tourist Service] Backend profile created successfully.');
             localStorage.setItem(AUTH_LOCAL_STORAGE_KEY, JSON.stringify(data));
+            await saveOfflineData(user.id, 'profile', data);
             return { data, error: null };
           }
         }
@@ -160,7 +179,7 @@ export async function updateTouristProfile(updates) {
           .select()
           .maybeSingle();
 
-        if (error) {
+          if (error) {
           console.error('[Tourist Service] Failed to update backend profile:', error);
           return { data: null, error: error.message };
         } else if (data) {
@@ -172,6 +191,7 @@ export async function updateTouristProfile(updates) {
           } else {
             localStorage.setItem(AUTH_LOCAL_STORAGE_KEY, JSON.stringify(data));
           }
+          await saveOfflineData(user.id, 'profile', data);
           return { data, error: null };
         }
       }
@@ -218,6 +238,34 @@ export async function updateLiveLocation(latitude, longitude, _accuracy) {
     return { data, error: null };
   } catch (error) {
     console.error('[Tourist Service] Exception updating live location:', error);
+    return { data: null, error };
+  }
+}
+
+export async function updateLiveSafetyState(score, severity) {
+  try {
+    if (!supabase) return { error: { message: 'Supabase not configured' } };
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: 'Not authenticated' };
+
+    const { data, error } = await supabase.from('tourists')
+      .update({
+        current_safety_score: score,
+        current_safety_severity: severity
+      })
+      .eq('auth_user_id', user.id)
+      .select()
+      .maybeSingle();
+
+    if (error) {
+      console.warn('[Tourist Service] Failed to update safety state:', error.message);
+      return { data: null, error: error.message };
+    }
+    
+    return { data, error: null };
+  } catch (error) {
+    console.error('[Tourist Service] Exception updating safety state:', error);
     return { data: null, error };
   }
 }

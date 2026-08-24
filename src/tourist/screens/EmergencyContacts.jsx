@@ -7,6 +7,7 @@ export default function EmergencyContacts() {
   const navigate = useNavigate();
   const [contacts, setContacts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isCached, setIsCached] = useState(false);
 
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState('');
@@ -17,9 +18,10 @@ export default function EmergencyContacts() {
     let active = true;
     const fetchContacts = async () => {
       setLoading(true);
-      const { data } = await getEmergencyContacts();
+      const { data, isCached: cached } = await getEmergencyContacts();
       if (active) {
         setContacts(data || []);
+        setIsCached(!!cached);
         setLoading(false);
       }
     };
@@ -65,6 +67,13 @@ export default function EmergencyContacts() {
         <div className="ec-title">Emergency Contacts</div>
         <div style={{width: 44}}></div>
       </div>
+      
+      {isCached && (
+        <div style={{ background: 'var(--warning)', color: '#000', padding: '8px 16px', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 600 }}>
+          <span className="material-symbols-outlined" style={{ fontSize: 16 }}>offline_bolt</span>
+          Cached for offline emergency use
+        </div>
+      )}
 
       <div className="ec-content">
         <p className="ec-desc">

@@ -2,9 +2,13 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { AuthProvider, useAuth } from './utils/AuthContext';
 import { AuthorityAuthProvider, useAuthorityAuth } from './authority/utils/AuthorityAuthContext';
 import { LocationProvider } from './utils/LocationContext';
+import { SafetyProvider } from './utils/SafetyContext';
 import { ThemeProvider } from './utils/ThemeContext';
+import { LanguageProvider } from './utils/LanguageContext';
+import { AccessibilityProvider } from './utils/AccessibilityContext';
 import { useEffect } from 'react';
 import { testSupabaseConnection } from './lib/supabase';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Layouts
 import TouristLayout from './tourist/TouristLayout';
@@ -25,10 +29,13 @@ import AreaSafetyWarning from './tourist/screens/AreaSafetyWarning';
 import SOSMode from './tourist/screens/SOSMode';
 import SafetyCredential from './tourist/screens/SafetyCredential';
 import OfflineMode from './tourist/screens/OfflineMode';
+import OfflineMapView from './tourist/screens/OfflineMapView';
 import Alerts from './tourist/screens/Alerts';
 import Menu from './tourist/screens/Menu';
 import ARSafetyView from './tourist/screens/ARSafetyView';
 import EmergencyContacts from './tourist/screens/EmergencyContacts';
+import NearbyServices from './tourist/screens/NearbyServices';
+import SafetyCheck from './tourist/screens/SafetyCheck';
 
 // Tourist Settings screens
 import AppSettings from './tourist/screens/settings/AppSettings';
@@ -36,6 +43,8 @@ import LanguageRegion from './tourist/screens/settings/LanguageRegion';
 import Accessibility from './tourist/screens/settings/Accessibility';
 import PrivacyData from './tourist/screens/settings/PrivacyData';
 import HelpSupport from './tourist/screens/settings/HelpSupport';
+import LanguageSettings from './tourist/screens/settings/LanguageSettings';
+import LiveVoiceTranslator from './tourist/screens/settings/LiveVoiceTranslator';
 
 // Authority screens
 import CommandCenter from './authority/screens/CommandCenter';
@@ -86,9 +95,11 @@ export default function App() {
 
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <AuthorityAuthProvider>
-          <BrowserRouter>
+      <AccessibilityProvider>
+        <LanguageProvider>
+          <AuthProvider>
+            <AuthorityAuthProvider>
+              <BrowserRouter>
             <Routes>
               {/* Welcome — no layout wrapper (full-screen) */}
               <Route path="/" element={<Welcome />} />
@@ -99,9 +110,13 @@ export default function App() {
               {/* Tourist experience — mobile-first layout */}
               <Route path="/tourist" element={
                 <LocationProvider>
-                  <RequireAuth>
-                    <TouristLayout />
-                  </RequireAuth>
+                  <SafetyProvider>
+                    <RequireAuth>
+                      <ErrorBoundary>
+                        <TouristLayout />
+                      </ErrorBoundary>
+                    </RequireAuth>
+                  </SafetyProvider>
                 </LocationProvider>
               }>
                 <Route index element={<Navigate to="dashboard" replace />} />
@@ -112,17 +127,21 @@ export default function App() {
                 <Route path="alert" element={<AISafetyAlert />} />
                 <Route path="area-warning" element={<AreaSafetyWarning />} />
                 <Route path="sos" element={<SOSMode />} />
+                <Route path="nearby" element={<NearbyServices />} />
                 <Route path="credential" element={<SafetyCredential />} />
                 <Route path="offline" element={<OfflineMode />} />
+                <Route path="offline-map/:city" element={<OfflineMapView />} />
                 <Route path="alerts" element={<Alerts />} />
                 <Route path="menu" element={<Menu />} />
                 <Route path="ar" element={<ARSafetyView />} />
+                <Route path="safety-check" element={<SafetyCheck />} />
                 <Route path="settings/app" element={<AppSettings />} />
-                <Route path="settings/language" element={<LanguageRegion />} />
+                <Route path="settings/language" element={<LanguageSettings />} />
                 <Route path="settings/accessibility" element={<Accessibility />} />
                 <Route path="settings/privacy" element={<PrivacyData />} />
                 <Route path="settings/help" element={<HelpSupport />} />
                 <Route path="settings/emergency" element={<EmergencyContacts />} />
+                <Route path="settings/translator" element={<LiveVoiceTranslator />} />
               </Route>
 
               {/* Authority experience — desktop-first layout */}
@@ -135,14 +154,16 @@ export default function App() {
                 <Route index element={<Navigate to="dashboard" replace />} />
                 <Route path="dashboard" element={<CommandCenter />} />
                 <Route path="risk-center" element={<AIRiskCenter />} />
-                <Route path="incident/:id" element={<IncidentDetail />} />
+                <Route path="tourist/:id" element={<IncidentDetail />} />
                 <Route path="intelligence" element={<RiskIntelligence />} />
                 <Route path="map" element={<AuthorityMap />} />
-              </Route>
-            </Routes>
-          </BrowserRouter>
-        </AuthorityAuthProvider>
-      </AuthProvider>
+                </Route>
+              </Routes>
+              </BrowserRouter>
+            </AuthorityAuthProvider>
+          </AuthProvider>
+        </LanguageProvider>
+      </AccessibilityProvider>
     </ThemeProvider>
   );
 }

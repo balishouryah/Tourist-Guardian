@@ -1,8 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../utils/AuthContext';
+import { useLanguage } from '../../utils/LanguageContext';
 import './SafetyCredential.css';
 
 export default function SafetyCredential() {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const { touristProfile: profile, loading } = useAuth();
   const profileError = !loading && profile === null;
@@ -29,7 +31,7 @@ export default function SafetyCredential() {
   return (
     <div className="credential-screen animate-fade-in">
       <div className="credential-header">
-        <h1 className="credential-title">Digital Safety ID</h1>
+        <h1 className="credential-title">{t('digital_safety_id')}</h1>
         <p className="credential-subtitle">Prototype verification credential for authorities</p>
       </div>
 
@@ -56,13 +58,13 @@ export default function SafetyCredential() {
             </div>
             
             <div className="credential-field">
-              <div className="credential-label">Nationality</div>
+              <div className="credential-label">{t('nationality')}</div>
               <div className="credential-value">{profile.nationality || 'India'}</div>
             </div>
 
             {profile.planned_destination && (
               <div className="credential-field">
-                <div className="credential-label">Destination</div>
+                <div className="credential-label">{t('destination')}</div>
                 <div className="credential-value">{profile.planned_destination}</div>
               </div>
             )}
@@ -78,10 +80,10 @@ export default function SafetyCredential() {
 
         <div className="credential-footer">
           <div>
-            <div className="credential-label">Status</div>
+            <div className="credential-label">{t('status')}</div>
             <div className="credential-status">
               <span className="material-symbols-outlined" style={{ fontSize: 16 }}>verified_user</span>
-              ACTIVE SECURE
+              {t('verified').toUpperCase()}
             </div>
           </div>
           <div className="credential-qr-placeholder">

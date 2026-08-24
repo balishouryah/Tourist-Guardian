@@ -1,49 +1,52 @@
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DEMO_INCIDENTS } from '../../utils/constants';
-import { useSharedDemoState } from '../../utils/useSharedDemoState';
+import { useAuthorityRealtime } from '../utils/AuthorityRealtimeContext';
+import { formatRelativeTime } from '../../utils/timeUtils';
 import './AIRiskCenter.css';
 
 export default function AIRiskCenter() {
   const navigate = useNavigate();
-  const { incident } = useSharedDemoState();
+  const { activeTourists } = useAuthorityRealtime();
 
-  // Combine static demo incidents with the dynamic shared incident.
-  // We filter out the static TG-1042 so we can replace it with the dynamic one if active.
-  const staticIncidents = DEMO_INCIDENTS.filter(inc => inc.id !== 'TG-1042');
-  const activeIncidents = incident.active 
-    ? [
-        {
-          id: incident.id,
-          touristId: incident.touristId,
-          touristName: incident.touristName,
-          severity: incident.severity,
-          location: incident.location,
-          time: 'Just now',
-          signals: incident.signals,
-          score: incident.score
-        },
-        ...staticIncidents
-      ]
-    : staticIncidents;
+  const activeRisks = useMemo(() => {
+    return Object.values(activeTourists)
+      .filter(t => t.current_safety_severity === 'CRITICAL' || t.current_safety_severity === 'HIGH')
+      .map(t => ({
+        id: t.id,
+        safety_id: t.safety_id,
+        name: t.name,
+        severity: t.current_safety_severity,
+        score: t.current_safety_score,
+        location: t.current_latitude && t.current_longitude ? `${t.current_latitude.toFixed(4)}, ${t.current_longitude.toFixed(4)}` : 'Unknown',
+        time: formatRelativeTime(t.last_location_update),
+        signals: [`AI Safety Score: ${t.current_safety_score}`]
+      }))
+      .sort((a, b) => {
+        const sA = a.severity === 'CRITICAL' ? 2 : 1;
+        const sB = b.severity === 'CRITICAL' ? 2 : 1;
+        if (sB !== sA) return sB - sA;
+        return a.score - b.score; // Lower score is higher risk
+      });
+  }, [activeTourists]);
 
   return (
     <div className="ai-risk-center">
       {/* Sidebar: Priority Incidents */}
       <div className="ai-risk-sidebar">
         <div className="ai-risk-sidebar-header">
-          <span className="ai-risk-sidebar-title">Priority Alerts</span>
-          <span className="ai-risk-badge">{activeIncidents.length} Active</span>
+          <span className="ai-risk-sidebar-title">AI Priority Alerts</span>
+          <span className="ai-risk-badge">{activeRisks.length} Detected</span>
         </div>
         
         <div className="ai-risk-list">
-          {activeIncidents.map((inc) => (
+          {activeRisks.map((inc) => (
             <div 
               key={inc.id} 
               className={`ai-risk-incident-card ${inc.severity.toLowerCase()}`}
-              onClick={() => navigate(`/authority/incident/${inc.id}`)}
+              onClick={() => navigate(`/authority/tourist/${inc.id}`)}
             >
               <div className="ai-risk-card-header">
-                <span className="ai-risk-card-title">{inc.touristName}</span>
+                <span className="ai-risk-card-title">{inc.name}</span>
                 <span className="ai-risk-card-time">{inc.time}</span>
               </div>
               <div className="ai-risk-card-location">
@@ -62,7 +65,7 @@ export default function AIRiskCenter() {
                   className="ai-risk-btn-sm primary"
                   onClick={(e) => {
                     e.stopPropagation(); // prevent card click
-                    navigate(`/authority/incident/${inc.id}`);
+                    navigate(`/authority/tourist/${inc.id}`);
                   }}
                 >
                   Inspect
@@ -70,6 +73,12 @@ export default function AIRiskCenter() {
               </div>
             </div>
           ))}
+          
+          {activeRisks.length === 0 && (
+            <div style={{ padding: 'var(--space-xl)', textAlign: 'center', color: 'var(--on-surface-variant)' }}>
+              No critical AI risks detected.
+            </div>
+          )}
         </div>
       </div>
 

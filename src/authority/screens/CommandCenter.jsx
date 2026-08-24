@@ -1,65 +1,89 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DEMO_INCIDENTS } from '../../utils/constants';
-import { useSharedDemoState } from '../../utils/useSharedDemoState';
 import { useAuthorityRealtime } from '../utils/AuthorityRealtimeContext';
 import { useAuthorityAuth } from '../utils/AuthorityAuthContext';
+import { formatRelativeTime } from '../../utils/timeUtils';
 import './CommandCenter.css';
 
 export default function CommandCenter() {
   const navigate = useNavigate();
-  const { incident } = useSharedDemoState();
   const { realtimeIncidents, activeTourists } = useAuthorityRealtime();
   const { authorityProfile } = useAuthorityAuth();
-  const [filter, setFilter] = useState('ALL');
 
-  const staticIncidents = DEMO_INCIDENTS.filter(inc => inc.id !== 'TG-1042').map(inc => ({...inc, isDemo: true}));
-  
-  // Convert realtime dictionary to array and map to frontend format
-  const mappedRealtime = Object.values(realtimeIncidents).map(inc => ({
-    id: inc.id,
-    touristId: inc.tourists?.safety_id || inc.tourist_id,
-    touristName: inc.tourists?.name || 'Unknown',
-    severity: inc.severity,
-    status: inc.status,
-    location: inc.latitude && inc.longitude ? `${inc.latitude.toFixed(4)}, ${inc.longitude.toFixed(4)}` : 'Unknown',
-    time: new Date(inc.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    signals: inc.detected_signals || [inc.incident_type],
-    score: inc.risk_score || 0,
-    isDemo: false
-  }));
+  // Create a tourist-centric array
+  const mappedTourists = useMemo(() => {
+    const allIncidentsArray = Object.values(realtimeIncidents);
+    
+    return Object.values(activeTourists).map(t => {
+      // Find all incidents belonging to this tourist
+      const touristIncidents = allIncidentsArray.filter(
+        inc => inc.tourist_id === t.id || inc.tourists?.safety_id === t.safety_id
+      );
+      
+      const activeSOSList = touristIncidents.filter(inc => ['ACTIVE', 'ACKNOWLEDGED'].includes(inc.status));
+      const hasActiveSOS = activeSOSList.length > 0;
+      
+      // Calculate Priority
+      let priority = 'SAFE';
+      let priorityScore = 0;
+      
+      if (hasActiveSOS) {
+        priority = 'ACTIVE SOS';
+        priorityScore = 4;
+      } else if (t.current_safety_severity === 'CRITICAL') {
+        priority = 'CRITICAL';
+        priorityScore = 5; // Critical AI score without SOS is still highest priority
+      } else if (t.current_safety_severity === 'HIGH') {
+        priority = 'HIGH';
+        priorityScore = 3;
+      } else if (t.current_safety_severity === 'CAUTION') {
+        priority = 'CAUTION';
+        priorityScore = 2;
+      } else {
+        priority = t.current_safety_severity || 'SAFE';
+        priorityScore = priority === 'SAFE' ? 1 : 0;
+      }
+      
+      // Find the most recent activity timestamp for sorting
+      // Either their last location update, or their most recent incident
+      let lastActivityTime = new Date(t.last_location_update).getTime();
+      if (touristIncidents.length > 0) {
+        const latestIncTime = Math.max(...touristIncidents.map(i => new Date(i.updated_at || i.created_at).getTime()));
+        if (latestIncTime > lastActivityTime) lastActivityTime = latestIncTime;
+      }
 
-  // Only use the broadcasted local demo incident if we don't have it in realtime
-  const isDemoActiveLocally = incident.active && !mappedRealtime.some(r => r.score === incident.score && r.severity === incident.severity);
+      // Latest SOS specifically for display
+      let latestSOSTimeStr = null;
+      if (touristIncidents.length > 0) {
+        const latestInc = [...touristIncidents].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+        latestSOSTimeStr = formatRelativeTime(latestInc.created_at);
+      }
 
-  const allIncidents = [
-    ...mappedRealtime,
-    ...(isDemoActiveLocally ? [{
-      id: incident.id,
-      touristId: incident.touristId,
-      touristName: incident.touristName,
-      severity: incident.severity,
-      status: incident.status,
-      location: incident.location,
-      time: 'Just now',
-      signals: incident.signals,
-      score: incident.score,
-      isDemo: true
-    }] : []),
-    ...staticIncidents
-  ].sort((a, b) => {
-    // Sort by severity (CRITICAL > HIGH > CAUTION > SAFE)
-    const sevScore = { CRITICAL: 3, HIGH: 2, CAUTION: 1, SAFE: 0 };
-    return (sevScore[b.severity] || 0) - (sevScore[a.severity] || 0);
-  });
+      return {
+        id: t.id,
+        safety_id: t.safety_id,
+        name: t.name,
+        location: t.current_latitude && t.current_longitude ? `${t.current_latitude.toFixed(4)}, ${t.current_longitude.toFixed(4)}` : 'Unknown',
+        last_update_str: formatRelativeTime(t.last_location_update),
+        priority,
+        priorityScore,
+        lastActivityTime,
+        score: t.current_safety_score || 100,
+        severity: t.current_safety_severity || 'SAFE',
+        activeSOSCount: activeSOSList.length,
+        totalSOSCount: touristIncidents.length,
+        latestSOSTimeStr
+      };
+    }).sort((a, b) => {
+      // Sort by priority first
+      if (b.priorityScore !== a.priorityScore) {
+        return b.priorityScore - a.priorityScore;
+      }
+      // Then by most recent activity
+      return b.lastActivityTime - a.lastActivityTime;
+    });
+  }, [activeTourists, realtimeIncidents]);
 
-  const activeIncidents = useMemo(() => {
-    if (filter === 'ALL') return allIncidents;
-    if (filter === 'LIVE') return allIncidents.filter(i => !i.isDemo);
-    if (filter === 'DEMO') return allIncidents.filter(i => i.isDemo);
-    if (filter === 'CRITICAL') return allIncidents.filter(i => i.severity === 'CRITICAL');
-    return allIncidents.filter(i => i.status === filter);
-  }, [allIncidents, filter]);
 
   return (
     <div className="command-center">
@@ -103,7 +127,7 @@ export default function CommandCenter() {
             <span className="material-symbols-outlined" style={{ fontSize: 18 }}>emergency_home</span>
             Live Incidents
           </div>
-          <div className="command-stat-value danger">{mappedRealtime.length}</div>
+          <div className="command-stat-value danger">{Object.values(realtimeIncidents).length}</div>
           <div className="command-stat-trend negative">
             <span className="material-symbols-outlined" style={{ fontSize: 16 }}>warning</span>
             Active operations
@@ -140,53 +164,54 @@ export default function CommandCenter() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-md)' }}>
             <h2 className="command-section-title" style={{ margin: 0 }}>
               <span className="material-symbols-outlined">format_list_bulleted</span>
-              Incident Queue
+              Tourist Operations Queue
             </h2>
-            <div className="command-filters">
-              {['ALL', 'LIVE', 'DEMO', 'CRITICAL', 'ACTIVE'].map(f => (
-                <button 
-                  key={f}
-                  className={`command-filter-btn ${filter === f ? 'active' : ''}`}
-                  onClick={() => setFilter(f)}
-                >
-                  {f}
-                </button>
-              ))}
-            </div>
           </div>
           
           <div className="command-alerts-list">
-            {activeIncidents.map((inc) => (
-              <div className="command-alert-item" key={inc.id} onClick={() => navigate(`/authority/incident/${inc.id}`)}>
-                <div className={`command-alert-icon ${inc.severity === 'CRITICAL' ? 'critical' : inc.severity === 'HIGH' ? 'warning' : 'info'}`}>
+            {mappedTourists.map((t) => (
+              <div className="command-alert-item" key={t.id} onClick={() => navigate(`/authority/tourist/${t.id}`)} style={{ borderLeft: `4px solid ${t.priorityScore >= 4 ? 'var(--error)' : t.priorityScore === 3 ? 'var(--caution)' : 'transparent'}` }}>
+                <div className={`command-alert-icon ${t.priorityScore >= 4 ? 'critical' : t.priorityScore === 3 ? 'warning' : 'info'}`}>
                   <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
-                    {inc.severity === 'CRITICAL' ? 'emergency' : 'warning'}
+                    {t.priorityScore >= 4 ? 'emergency' : t.priorityScore === 3 ? 'warning' : 'person'}
                   </span>
                 </div>
                 <div className="command-alert-content">
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                    <div className="command-alert-title">{inc.touristName}</div>
-                    <span style={{
-                      fontSize: '10px', fontWeight: 700, padding: '2px 6px', borderRadius: '4px',
-                      background: inc.isDemo ? 'var(--secondary)' : 'var(--primary)', color: '#fff'
-                    }}>
-                      {inc.isDemo ? 'DEMO' : 'LIVE'}
+                    <div className="command-alert-title">{t.name}</div>
+                    <span style={{ fontSize: '10px', fontFamily: 'monospace', color: 'var(--on-surface-variant)' }}>
+                      {t.safety_id}
                     </span>
+                    {t.activeSOSCount > 0 && (
+                      <span style={{
+                        fontSize: '10px', fontWeight: 700, padding: '2px 6px', borderRadius: '4px',
+                        background: 'var(--error)', color: '#fff'
+                      }}>
+                        ACTIVE SOS: {t.activeSOSCount}
+                      </span>
+                    )}
                   </div>
                   <div className="command-alert-desc">
-                    ID: <span style={{fontFamily: 'monospace'}}>{inc.touristId}</span> • {inc.location}
+                    GPS: {t.location} • Last update: {t.last_update_str}
                   </div>
+                  {t.latestSOSTimeStr && (
+                    <div className="command-alert-desc" style={{ marginTop: '4px', color: 'var(--error)' }}>
+                      Latest SOS: {t.latestSOSTimeStr} • Total SOS Events: {t.totalSOSCount}
+                    </div>
+                  )}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                  <div className="command-alert-time">{inc.time}</div>
-                  <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--on-surface-variant)' }}>{inc.status || inc.severity}</div>
+                  <div style={{ fontSize: '13px', fontWeight: 800, color: t.priorityScore >= 4 ? 'var(--error)' : t.priorityScore === 3 ? 'var(--caution)' : 'var(--on-surface-variant)' }}>
+                    {t.priority}
+                  </div>
+                  <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--on-surface-variant)' }}>Score: {t.score}/100</div>
                 </div>
               </div>
             ))}
             
-            {activeIncidents.length === 0 && (
+            {mappedTourists.length === 0 && (
               <div style={{ padding: 'var(--space-xl)', textAlign: 'center', color: 'var(--on-surface-variant)' }}>
-                No incidents match the current filter.
+                No active tourists being monitored.
               </div>
             )}
           </div>

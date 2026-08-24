@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { queueSOS } from './offlineService';
 
 /**
  * incidentService.js
@@ -26,6 +27,23 @@ export async function createIncident({ incidentType, severity, riskScore, signal
     if (profileError || !profile) throw new Error('Tourist profile not found');
 
     const touristId = profile.id;
+    
+    const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+    
+    if (!isOnline) {
+      console.log(`[SOS] Offline - queueing incident`);
+      const queuedData = await queueSOS({
+        tourist_id: touristId,
+        incident_type: incidentType,
+        status: 'ACTIVE',
+        severity,
+        risk_score: riskScore,
+        latitude,
+        longitude,
+        detected_signals: signals,
+      });
+      return { data: queuedData, error: null, isQueued: true };
+    }
 
     console.log(`[SOS] Incident insert started (Lat: ${latitude}, Lng: ${longitude})`);
 

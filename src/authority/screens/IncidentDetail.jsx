@@ -1,47 +1,95 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { DEMO_INCIDENTS, DEMO_TOURIST, DEMO_TIMELINE } from '../../utils/constants';
-import { useSharedDemoState } from '../../utils/useSharedDemoState';
 import { useAuthorityRealtime } from '../utils/AuthorityRealtimeContext';
 import { authoritySupabase } from '../../lib/supabase';
 import InteractiveMap from '../../components/InteractiveMap';
+import { formatRelativeTime } from '../../utils/timeUtils';
 import './IncidentDetail.css';
 
 export default function IncidentDetail() {
-  const { id } = useParams();
+  const { id } = useParams(); // This is now the tourist ID
   const navigate = useNavigate();
-  const { incident: sharedIncident, acknowledgeIncident, escalateIncident } = useSharedDemoState();
-  const [realIncident, setRealIncident] = useState(null);
+  const { activeTourists } = useAuthorityRealtime();
+  
   const [realTourist, setRealTourist] = useState(null);
-  const [realContacts, setRealContacts] = useState([]);
-  const [updating, setUpdating] = useState(false);
-
-  const isDemo = id === 'TG-1042' || (id?.startsWith('TG-') && id !== 'TG-1042');
+  const [incidents, setIncidents] = useState([]);
+  const [safetyEvents, setSafetyEvents] = useState([]);
+  const [contacts, setContacts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (isDemo || !authoritySupabase) return;
+    if (!authoritySupabase) return;
 
     let isMounted = true;
     
-    const fetchIncidentData = async () => {
-      const { data: inc } = await authoritySupabase.from('incidents').select('*').eq('id', id).single();
-      if (inc && isMounted) {
-        setRealIncident(inc);
-        const { data: tourist } = await authoritySupabase.from('tourists').select('*').eq('id', inc.tourist_id).single();
-        if (tourist && isMounted) setRealTourist(tourist);
+    const fetchTouristData = async () => {
+      setLoading(true);
+      try {
+        // Fetch Tourist
+        const { data: tourist } = await authoritySupabase
+          .from('tourists')
+          .select('*')
+          .eq('id', id)
+          .single();
+          
+        if (!tourist && isMounted) {
+          // Maybe it's a safety_id?
+          const { data: touristBySafety } = await authoritySupabase
+            .from('tourists')
+            .select('*')
+            .eq('safety_id', id)
+            .single();
+            
+          if (touristBySafety && isMounted) {
+            setRealTourist(touristBySafety);
+          }
+        } else if (tourist && isMounted) {
+          setRealTourist(tourist);
+        }
 
-        const { data: contacts } = await authoritySupabase.from('emergency_contacts').select('*').eq('tourist_id', inc.tourist_id);
-        if (contacts && isMounted) setRealContacts(contacts);
+        const tId = tourist?.id || (isMounted && realTourist?.id) || id;
+
+        // Fetch Incidents
+        const { data: incs } = await authoritySupabase
+          .from('incidents')
+          .select('*')
+          .eq('tourist_id', tId)
+          .order('created_at', { ascending: false });
+        if (incs && isMounted) setIncidents(incs);
+
+        // Fetch Safety Events
+        const { data: events } = await authoritySupabase
+          .from('safety_events')
+          .select('*')
+          .eq('tourist_id', tId)
+          .order('created_at', { ascending: false });
+        if (events && isMounted) setSafetyEvents(events);
+
+        // Fetch Contacts
+        const { data: conts } = await authoritySupabase
+          .from('emergency_contacts')
+          .select('*')
+          .eq('tourist_id', tId);
+        if (conts && isMounted) setContacts(conts);
+
+      } catch (err) {
+        console.error('Failed to fetch tourist details', err);
       }
+      if (isMounted) setLoading(false);
     };
 
-    fetchIncidentData();
+    fetchTouristData();
 
-    const channel = authoritySupabase.channel(`incident_${id}`)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'incidents', filter: `id=eq.${id}` }, (payload) => {
-        if (isMounted) {
-          setRealIncident(payload.new);
-        }
+    // Subscribe to realtime updates for this tourist's data
+    const channel = authoritySupabase.channel(`tourist_${id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'incidents', filter: `tourist_id=eq.${id}` }, () => {
+        fetchTouristData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'safety_events', filter: `tourist_id=eq.${id}` }, () => {
+        fetchTouristData();
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tourists', filter: `id=eq.${id}` }, () => {
+        fetchTouristData();
       })
       .subscribe();
 
@@ -49,200 +97,67 @@ export default function IncidentDetail() {
       isMounted = false;
       authoritySupabase.removeChannel(channel);
     };
-  }, [id, isDemo]);
+  }, [id]);
 
-  const updateIncidentStatus = async (newStatus) => {
-    if (isDemo) return;
-    setUpdating(true);
-    const { error } = await authoritySupabase.from('incidents').update({ status: newStatus }).eq('id', id);
-    if (!error && realIncident) {
-      setRealIncident({ ...realIncident, status: newStatus });
+  const updateIncidentStatus = async (incidentId, newStatus) => {
+    const { error } = await authoritySupabase.from('incidents').update({ status: newStatus }).eq('id', incidentId);
+    if (!error) {
+      setIncidents(prev => prev.map(inc => inc.id === incidentId ? { ...inc, status: newStatus } : inc));
     }
-    setUpdating(false);
   };
 
-  // Construct UI data cleanly depending on source
-  let incident = null;
-  let tourist = null;
-  let timeline = [];
-  let contacts = [];
-
-  if (id === 'TG-1042') {
-    incident = {
-      id: sharedIncident.id,
-      status: sharedIncident.status,
-      severity: sharedIncident.severity,
-      location: sharedIncident.location,
-      time: sharedIncident.timeline?.[0]?.time || 'Just now',
-      signals: sharedIncident.signals,
-      score: sharedIncident.score,
-      latitude: window.tgLastLat || 25.5788,
-      longitude: window.tgLastLng || 91.8933
-    };
-    tourist = { ...DEMO_TOURIST, isDemo: true };
-    timeline = sharedIncident.timeline || DEMO_TIMELINE;
-    contacts = [DEMO_TOURIST.emergencyContact];
-  } else if (!isDemo && realIncident) {
-    incident = {
-      id: realIncident.id,
-      status: realIncident.status,
-      severity: realIncident.severity,
-      location: realIncident.latitude ? `${realIncident.latitude.toFixed(4)}, ${realIncident.longitude.toFixed(4)}` : 'Unknown',
-      time: new Date(realIncident.created_at).toLocaleTimeString(),
-      signals: realIncident.detected_signals || [realIncident.incident_type],
-      score: realIncident.risk_score || 0,
-      latitude: realIncident.latitude,
-      longitude: realIncident.longitude,
-      accuracy: realIncident.location_accuracy_m
-    };
-    if (realTourist) {
-      tourist = {
-        name: realTourist.name || 'Unknown',
-        id: realTourist.safety_id || realTourist.id,
-        phone: realTourist.phone || 'Not provided',
-        nationality: realTourist.nationality || 'Not provided',
-        language: realTourist.preferred_language || 'Not provided',
-        profile_photo: realTourist.profile_photo_url,
-        date_of_birth: realTourist.date_of_birth || 'Not provided',
-        gender: realTourist.gender || 'Not provided',
-        medical_notes: realTourist.medical_notes || 'None',
-        blood_group: realTourist.blood_group || 'Unknown',
-        accessibility_notes: realTourist.accessibility_notes || 'None',
-        travel_purpose: realTourist.travel_purpose || 'Not provided',
-        planned_destination: realTourist.planned_destination || 'Not provided',
-        trip_start_date: realTourist.trip_start_date || 'Not provided',
-        trip_end_date: realTourist.trip_end_date || 'Not provided',
-        home_city: realTourist.home_city || 'Not provided',
-        home_country: realTourist.home_country || 'Not provided',
-        isDemo: false
-      };
-    }
-    contacts = realContacts.length > 0 ? realContacts.map(c => ({
-      name: c.name,
-      relation: c.relationship || 'Contact',
-      phone: c.phone
-    })) : [];
-    
-    // Generate a basic chronological timeline
-    timeline = [
-      { time: new Date(realIncident.created_at).toLocaleTimeString(), event: `Incident triggered (${realIncident.incident_type})`, severity: 'critical' }
-    ];
-    if (realIncident.updated_at && realIncident.updated_at !== realIncident.created_at) {
-      timeline.unshift({ time: new Date(realIncident.updated_at).toLocaleTimeString(), event: `Status updated to ${realIncident.status}`, severity: 'high' });
-    }
-  } else if (isDemo) {
-    const demoInc = DEMO_INCIDENTS.find(inc => inc.id === id);
-    if (demoInc) {
-      incident = { ...demoInc, latitude: 25.5788, longitude: 91.8933 };
-    }
-    tourist = { ...DEMO_TOURIST, isDemo: true };
-    timeline = DEMO_TIMELINE;
-    contacts = [DEMO_TOURIST.emergencyContact];
-  }
-
-  // Calculate live presence
-  const { activeTourists } = useAuthorityRealtime();
-  let liveTouristData = null;
-  let liveStatus = 'OFFLINE';
-  let liveTimeAgo = '';
-
-  if (tourist && activeTourists && activeTourists[tourist.id]) {
-    liveTouristData = activeTourists[tourist.id];
-    const lastUpdate = new Date(liveTouristData.last_location_update);
-    const diffMins = Math.floor((Date.now() - lastUpdate.getTime()) / 60000);
-    
-    if (diffMins < 2) {
-      liveStatus = 'LIVE';
-      liveTimeAgo = diffMins === 0 ? 'Just now' : `${diffMins}m ago`;
-    } else if (diffMins <= 5) {
-      liveStatus = 'STALE';
-      liveTimeAgo = `${diffMins}m ago`;
-    } else {
-      liveStatus = 'OFFLINE';
-      liveTimeAgo = `>5m ago`;
-    }
-  }
-
-  if (!incident || !tourist) {
+  if (loading) {
     return (
       <div className="incident-detail-screen" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <p>Loading incident details...</p>
+        <p>Loading tourist data...</p>
       </div>
     );
   }
 
+  if (!realTourist) {
+    return (
+      <div className="incident-detail-screen" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column' }}>
+        <span className="material-symbols-outlined" style={{ fontSize: 48, color: 'var(--error)' }}>error</span>
+        <h2>Tourist Not Found</h2>
+        <p>The requested tourist ID does not exist in the database.</p>
+        <button className="btn btn-secondary" onClick={() => navigate('/authority/dashboard')}>Go Back</button>
+      </div>
+    );
+  }
+
+  const liveTouristData = activeTourists[realTourist.id];
+  const liveStatus = liveTouristData ? 'LIVE' : 'OFFLINE';
+  
+  // Calculate priority score directly from live tourist or DB
+  const currentSeverity = liveTouristData?.current_safety_severity || realTourist.current_safety_severity || 'SAFE';
+  const currentScore = liveTouristData?.current_safety_score || realTourist.current_safety_score || 100;
+  
+  const activeSOSList = incidents.filter(i => ['ACTIVE', 'ACKNOWLEDGED', 'RESPONDING', 'ESCALATED'].includes(i.status));
+  const currentActiveSOS = activeSOSList.length > 0 ? [activeSOSList[0]] : [];
+  const historicalSOS = incidents.filter(i => !currentActiveSOS.some(active => active.id === i.id));
+
   return (
     <div className="incident-detail-screen">
-      <button className="incident-back-btn" onClick={() => navigate('/authority/risk-center')}>
+      <button className="incident-back-btn" onClick={() => navigate('/authority/dashboard')}>
         <span className="material-symbols-outlined" style={{ fontSize: 18 }}>arrow_back</span>
-        Back to Analytics
+        Back to Dashboard
       </button>
 
       <div className="incident-header">
         <div>
           <div className="incident-title-row">
-            <h1 className="incident-title">Active Incident Response</h1>
-            <span className="incident-id">{incident.id}</span>
-            <span className="incident-data-source" style={{
-              background: isDemo ? 'var(--secondary)' : 'var(--primary)',
-              color: '#fff',
-              fontSize: '11px',
-              padding: '2px 6px',
-              borderRadius: '4px',
-              fontWeight: 700,
-              letterSpacing: '0.05em'
-            }}>
-              {isDemo ? 'DEMO MODE' : 'LIVE • SUPABASE'}
-            </span>
+            <h1 className="incident-title">{realTourist.name.toUpperCase()}</h1>
+            <span className="incident-id">{realTourist.safety_id}</span>
             <span className={`ai-risk-badge`} style={{
-              background: incident.severity === 'CRITICAL' ? 'var(--error)' : incident.severity === 'HIGH' ? 'var(--caution)' : 'var(--safe)',
+              background: currentSeverity === 'CRITICAL' || currentActiveSOS.length > 0 ? 'var(--error)' : currentSeverity === 'HIGH' ? 'var(--caution)' : 'var(--safe)',
               color: '#fff'
             }}>
-              {incident.status || incident.severity}
+              {currentActiveSOS.length > 0 ? 'ACTIVE SOS' : currentSeverity}
             </span>
           </div>
           <div className="incident-meta">
-            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>location_on</span>
-            {incident.location} • Detected {incident.time}
+            Safety Score: {currentScore}/100 • {incidents.length} Total Incidents
           </div>
-        </div>
-
-        <div className="incident-actions">
-          {isDemo ? (
-            <>
-              <button className="btn btn-secondary" onClick={() => acknowledgeIncident()}>
-                Acknowledge
-              </button>
-              <button className="btn btn-emergency" onClick={() => escalateIncident()}>
-                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>escalator_warning</span>
-                Escalate to Emergency Services
-              </button>
-            </>
-          ) : (
-            <>
-              {incident.status === 'ACTIVE' && (
-                <button className="btn btn-secondary" disabled={updating} onClick={() => updateIncidentStatus('ACKNOWLEDGED')}>
-                  Acknowledge
-                </button>
-              )}
-              {incident.status === 'ACKNOWLEDGED' && (
-                <button className="btn btn-primary" disabled={updating} onClick={() => updateIncidentStatus('RESPONDING')}>
-                  Dispatch Response
-                </button>
-              )}
-              {incident.status === 'RESPONDING' && (
-                <button className="btn btn-safe" style={{ backgroundColor: 'var(--safe)', color: '#fff' }} disabled={updating} onClick={() => updateIncidentStatus('RESOLVED')}>
-                  Mark Resolved
-                </button>
-              )}
-              {['ACTIVE', 'ACKNOWLEDGED', 'RESPONDING'].includes(incident.status) && (
-                <button className="btn btn-emergency" disabled={updating} onClick={() => updateIncidentStatus('ESCALATED')}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>escalator_warning</span>
-                  Escalate
-                </button>
-              )}
-            </>
-          )}
         </div>
       </div>
 
@@ -254,51 +169,32 @@ export default function IncidentDetail() {
               <span className="material-symbols-outlined">person</span>
               Tourist Profile
             </h2>
-
             <div className="incident-profile-header">
               <div className="incident-avatar">
-                {tourist.profile_photo ? (
-                  <img src={tourist.profile_photo} alt={tourist.name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                {realTourist.profile_photo_url ? (
+                  <img src={realTourist.profile_photo_url} alt={realTourist.name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
                 ) : (
-                  tourist.name.split(' ').map(n => n[0]).join('')
+                  realTourist.name.split(' ').map(n => n[0]).join('')
                 )}
               </div>
               <div>
-                <div className="incident-profile-name">{tourist.name}</div>
-                <div className="incident-profile-phone">{tourist.phone}</div>
+                <div className="incident-profile-name">{realTourist.name}</div>
+                <div className="incident-profile-phone">{realTourist.phone || 'No phone'}</div>
               </div>
             </div>
-
             <div className="incident-data-group">
               <div className="incident-data-label">Digital Safety ID</div>
-              <div className="incident-data-value" style={{ fontFamily: 'monospace' }}>{tourist.id}</div>
+              <div className="incident-data-value" style={{ fontFamily: 'monospace' }}>{realTourist.safety_id}</div>
             </div>
-
             <div className="incident-data-row">
               <div className="incident-data-group">
                 <div className="incident-data-label">Nationality</div>
-                <div className="incident-data-value">{tourist.nationality}</div>
+                <div className="incident-data-value">{realTourist.nationality || 'Not provided'}</div>
               </div>
               <div className="incident-data-group">
                 <div className="incident-data-label">Language</div>
-                <div className="incident-data-value">{tourist.language}</div>
+                <div className="incident-data-value">{realTourist.preferred_language || 'Not provided'}</div>
               </div>
-            </div>
-
-            <div className="incident-data-row">
-              <div className="incident-data-group">
-                <div className="incident-data-label">Gender</div>
-                <div className="incident-data-value">{tourist.gender}</div>
-              </div>
-              <div className="incident-data-group">
-                <div className="incident-data-label">DOB</div>
-                <div className="incident-data-value">{tourist.date_of_birth}</div>
-              </div>
-            </div>
-            
-            <div className="incident-data-group">
-              <div className="incident-data-label">Home Location</div>
-              <div className="incident-data-value">{tourist.home_city ? `${tourist.home_city}, ${tourist.home_country}` : 'Not provided'}</div>
             </div>
           </div>
           
@@ -310,22 +206,82 @@ export default function IncidentDetail() {
             <div className="incident-data-row">
               <div className="incident-data-group">
                 <div className="incident-data-label">Blood Group</div>
-                <div className="incident-data-value" style={{ color: 'var(--error)', fontWeight: 'bold' }}>{tourist.blood_group}</div>
+                <div className="incident-data-value" style={{ color: 'var(--error)', fontWeight: 'bold' }}>{realTourist.blood_group || 'Unknown'}</div>
               </div>
               <div className="incident-data-group">
                 <div className="incident-data-label">Medical Notes</div>
-                <div className="incident-data-value">{tourist.medical_notes}</div>
+                <div className="incident-data-value">{realTourist.medical_notes || 'None'}</div>
               </div>
             </div>
             <div className="incident-data-group">
-              <div className="incident-data-label">Accessibility Needs</div>
-              <div className="incident-data-value">{tourist.accessibility_notes}</div>
+              <div className="incident-data-label">Emergency Contacts</div>
+              {contacts.length > 0 ? contacts.map((c, i) => (
+                <div key={i} style={{ marginTop: '8px', padding: '8px', background: 'var(--surface-variant)', borderRadius: '8px' }}>
+                  <div style={{ fontWeight: 600 }}>{c.name} <span style={{ fontWeight: 'normal', fontSize: 12 }}>({c.relationship})</span></div>
+                  <div style={{ color: 'var(--primary)', fontSize: 13 }}>{c.phone}</div>
+                </div>
+              )) : (
+                <div style={{ fontSize: 13, color: 'var(--on-surface-variant)' }}>No contacts.</div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Center Column: Map & Signals */}
+        {/* Center Column: Map & Active SOS */}
         <div className="incident-center-col">
+          
+          {/* Active Emergency Action Area */}
+          {currentActiveSOS.length > 0 && (
+            <div className="incident-action-card" style={{ 
+              background: 'var(--surface-container-highest)', 
+              padding: '20px', 
+              borderRadius: '16px', 
+              marginBottom: '16px',
+              border: '2px solid var(--error)'
+            }}>
+              <h2 style={{ margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--error)' }}>
+                <span className="material-symbols-outlined icon-filled">emergency_share</span>
+                ACTIVE EMERGENCY ACTIONS
+              </h2>
+              
+              {currentActiveSOS.map(inc => (
+                <div key={inc.id} style={{ padding: '16px', background: 'var(--surface)', borderRadius: '12px', marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                    <strong style={{ fontSize: '16px' }}>SOS Incident</strong>
+                    <span style={{ 
+                      padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold',
+                      background: inc.status === 'ACTIVE' ? 'var(--error)' : 'var(--primary)',
+                      color: '#fff'
+                    }}>{inc.status}</span>
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                    {inc.status === 'ACTIVE' && (
+                      <button className="btn btn-primary" onClick={() => updateIncidentStatus(inc.id, 'ACKNOWLEDGED')} style={{ flex: 1, padding: '12px', fontSize: '14px', fontWeight: 'bold' }}>
+                        ACKNOWLEDGE INCIDENT
+                      </button>
+                    )}
+                    {inc.status === 'ACKNOWLEDGED' && (
+                      <button className="btn btn-primary" onClick={() => updateIncidentStatus(inc.id, 'RESPONDING')} style={{ flex: 1, padding: '12px', fontSize: '14px', fontWeight: 'bold', background: '#16a34a', color: '#fff', border: 'none' }}>
+                        MARK AS RESPONDING
+                      </button>
+                    )}
+                    {inc.status === 'RESPONDING' && (
+                      <button className="btn btn-secondary" onClick={() => updateIncidentStatus(inc.id, 'ESCALATED')} style={{ flex: 1, padding: '12px', fontSize: '14px', fontWeight: 'bold' }}>
+                        ESCALATE
+                      </button>
+                    )}
+                    {['ACTIVE', 'ACKNOWLEDGED', 'RESPONDING', 'ESCALATED'].includes(inc.status) && (
+                      <button className="btn btn-secondary" onClick={() => updateIncidentStatus(inc.id, 'RESOLVED')} style={{ flex: 1, padding: '12px', fontSize: '14px', fontWeight: 'bold' }}>
+                        RESOLVE INCIDENT
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="incident-map-card">
             <div className="incident-map-header">
               <span className="incident-section-title" style={{ margin: 0 }}>
@@ -333,46 +289,27 @@ export default function IncidentDetail() {
                 Live Location
               </span>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                {liveStatus !== 'OFFLINE' && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '4px',
+                  fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '12px',
+                  background: liveStatus === 'LIVE' ? '#dcfce7' : 'var(--surface-variant)',
+                  color: liveStatus === 'LIVE' ? '#16a34a' : 'var(--on-surface-variant)'
+                }}>
                   <div style={{
-                    display: 'flex', alignItems: 'center', gap: '4px',
-                    fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '12px',
-                    background: liveStatus === 'LIVE' ? '#dcfce7' : 'var(--caution-bg)',
-                    color: liveStatus === 'LIVE' ? '#16a34a' : 'var(--caution)'
-                  }}>
-                    <div style={{
-                      width: '6px', height: '6px', borderRadius: '50%',
-                      background: liveStatus === 'LIVE' ? '#16a34a' : 'var(--caution)',
-                      animation: liveStatus === 'LIVE' ? 'pulse 2s infinite' : 'none'
-                    }} />
-                    {liveStatus} ({liveTimeAgo})
-                  </div>
-                )}
-                {liveStatus === 'OFFLINE' && (
-                  <div style={{
-                    fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '12px',
-                    background: 'var(--surface-variant)', color: 'var(--on-surface-variant)'
-                  }}>
-                    OFFLINE ({liveTimeAgo})
-                  </div>
-                )}
-                <a 
-                  href={`https://www.google.com/maps/search/?api=1&query=${liveTouristData?.current_latitude || incident.latitude},${liveTouristData?.current_longitude || incident.longitude}`} 
-                  target="_blank" 
-                  rel="noreferrer"
-                  className="incident-maps-link"
-                >
-                  Open in Maps
-                  <span className="material-symbols-outlined" style={{ fontSize: 14 }}>open_in_new</span>
-                </a>
+                    width: '6px', height: '6px', borderRadius: '50%',
+                    background: liveStatus === 'LIVE' ? '#16a34a' : 'var(--on-surface-variant)',
+                    animation: liveStatus === 'LIVE' ? 'pulse 2s infinite' : 'none'
+                  }} />
+                  {liveStatus} ({formatRelativeTime(liveTouristData?.last_location_update || realTourist.last_location_update)})
+                </div>
               </div>
             </div>
+            
             <div className="incident-map-view" style={{ flex: 1, padding: 0 }}>
-              {incident.latitude && incident.longitude ? (
+              {(liveTouristData?.current_latitude || realTourist.current_latitude) ? (
                 <InteractiveMap 
                   showAuthorityView={true} 
-                  incidentState={incident} 
-                  liveTouristData={liveTouristData}
+                  liveTouristData={liveTouristData || realTourist}
                 />
               ) : (
                 <div style={{ textAlign: 'center', color: 'var(--surface-tint)', padding: 'var(--space-xl)' }}>
@@ -381,83 +318,82 @@ export default function IncidentDetail() {
                 </div>
               )}
             </div>
-            <div className="incident-map-footer">
-              <div className="incident-map-coords">
-                <strong>Incident:</strong> {incident.latitude?.toFixed(5)}, {incident.longitude?.toFixed(5)}
-                <br />
-                {liveTouristData && (
-                  <span><strong>Live:</strong> {liveTouristData.current_latitude?.toFixed(5)}, {liveTouristData.current_longitude?.toFixed(5)}</span>
-                )}
-              </div>
-              <div className="incident-map-accuracy">
-                {incident.accuracy ? `Accuracy: ±${Math.round(incident.accuracy)}m` : 'Accuracy: Unknown'}
-              </div>
-            </div>
           </div>
 
           <div className="incident-signals-card" style={{
-            background: incident.severity === 'CRITICAL' ? 'var(--error-container)' : incident.severity === 'HIGH' ? 'var(--caution-bg)' : '#dcfce7',
-            color: incident.severity === 'CRITICAL' ? 'var(--on-error-container)' : incident.severity === 'HIGH' ? 'var(--caution)' : '#16a34a'
+            background: currentSeverity === 'CRITICAL' ? 'var(--error-container)' : currentSeverity === 'HIGH' ? 'var(--caution-bg)' : '#dcfce7',
+            color: currentSeverity === 'CRITICAL' ? 'var(--on-error-container)' : currentSeverity === 'HIGH' ? 'var(--caution)' : '#16a34a'
           }}>
             <h2 className="incident-signals-title">
               <span className="material-symbols-outlined">warning</span>
-              Detected AI Risk Signals
+              Current Status: {currentSeverity}
             </h2>
             <div className="incident-signal-item">
               <span className="incident-signal-label">Safety Score</span>
-              <span className="incident-signal-value">{incident.score}/100</span>
+              <span className="incident-signal-value">{currentScore}/100</span>
             </div>
-            {incident.signals.map((sig, i) => (
-              <div className="incident-signal-item" key={i}>
-                <span className="incident-signal-label">{sig}</span>
-                <span className="incident-signal-value">Alert</span>
-              </div>
-            ))}
           </div>
         </div>
 
-        {/* Right Column: Contacts & Timeline */}
+        {/* Right Column: SOS History & Safety History */}
         <div className="incident-right-col">
           <div className="incident-timeline-card">
             <h2 className="incident-section-title">
-              <span className="material-symbols-outlined">contact_phone</span>
-              Emergency Contacts
+              <span className="material-symbols-outlined">emergency</span>
+              SOS History
             </h2>
-            
-            {contacts.length > 0 ? (
-              contacts.map((contact, i) => (
-                <div key={i} className="incident-emergency-contact">
-                  <div className="incident-data-value" style={{ fontWeight: 600 }}>{contact.name} <span style={{ fontWeight: 400, color: 'var(--on-surface-variant)', fontSize: 12 }}>({contact.relation})</span></div>
-                  <div className="incident-profile-phone" style={{ marginTop: '4px', fontSize: 15, color: 'var(--primary)' }}>{contact.phone}</div>
-                  <div className="incident-contact-actions" style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-                    <a href={`tel:${contact.phone}`} className="btn btn-interactive" style={{ flex: 1, textAlign: 'center', textDecoration: 'none' }}>
-                      CALL
-                    </a>
-                    <button className="btn btn-secondary" style={{ flex: 1 }}>
-                      NOTIFY
-                    </button>
+            <div className="incident-timeline">
+              {historicalSOS.length > 0 ? historicalSOS.map((inc, index) => {
+                const originalIndex = incidents.findIndex(i => i.id === inc.id);
+                return (
+                <div key={inc.id} className="incident-timeline-item" style={{ padding: '12px', background: 'var(--surface-variant)', borderRadius: '8px', marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <strong>SOS #{incidents.length - originalIndex}</strong>
+                    <span style={{ fontSize: 11, color: 'var(--on-surface-variant)' }}>{formatRelativeTime(inc.created_at)}</span>
                   </div>
+                  <div style={{ fontSize: 13, marginTop: '4px' }}>Status: <strong>{inc.status}</strong></div>
+                  
+                  {['ACTIVE', 'ACKNOWLEDGED'].includes(inc.status) && (
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                      {inc.status === 'ACTIVE' && (
+                        <button className="btn btn-secondary" onClick={() => updateIncidentStatus(inc.id, 'ACKNOWLEDGED')} style={{ fontSize: 11, padding: '4px 8px' }}>ACKNOWLEDGE</button>
+                      )}
+                      {inc.status === 'ACKNOWLEDGED' && (
+                        <button className="btn btn-primary" onClick={() => updateIncidentStatus(inc.id, 'RESPONDING')} style={{ fontSize: 11, padding: '4px 8px' }}>MARK RESPONDING</button>
+                      )}
+                      {inc.status === 'RESPONDING' && (
+                        <button className="btn btn-secondary" onClick={() => updateIncidentStatus(inc.id, 'ESCALATED')} style={{ fontSize: 11, padding: '4px 8px' }}>ESCALATE</button>
+                      )}
+                      <button className="btn btn-safe" onClick={() => updateIncidentStatus(inc.id, 'RESOLVED')} style={{ fontSize: 11, padding: '4px 8px', background: 'var(--safe)', color: '#fff', border: 'none' }}>RESOLVE</button>
+                    </div>
+                  )}
                 </div>
-              ))
-            ) : (
-              <div style={{ color: 'var(--on-surface-variant)', fontSize: 13, padding: '12px 0' }}>No emergency contacts provided.</div>
-            )}
+                );
+              }) : (
+                <div style={{ fontSize: 13, color: 'var(--on-surface-variant)' }}>No SOS history.</div>
+              )}
+            </div>
           </div>
 
           <div className="incident-timeline-card" style={{ marginTop: 'var(--space-lg)' }}>
             <h2 className="incident-section-title">
               <span className="material-symbols-outlined">history</span>
-              Incident Timeline
+              Safety History
             </h2>
-
             <div className="incident-timeline">
-              {timeline.map((item, index) => (
-                <div key={index} className="incident-timeline-item">
-                  <div className={`incident-timeline-dot ${item.severity}`} />
-                  <div className="incident-timeline-time">{item.time}</div>
-                  <div className="incident-timeline-event">{item.event}</div>
+              {safetyEvents.length > 0 ? safetyEvents.map((evt, index) => (
+                <div key={index} className="incident-timeline-item" style={{ marginBottom: '16px' }}>
+                  <div className={`incident-timeline-dot ${evt.severity === 'CRITICAL' ? 'critical' : evt.severity === 'HIGH' ? 'high' : 'safe'}`} />
+                  <div className="incident-timeline-time">{formatRelativeTime(evt.created_at)}</div>
+                  <div className="incident-timeline-event">
+                    <strong>{evt.event_type}</strong>
+                    <br />
+                    Score: {evt.risk_score} | {evt.severity}
+                  </div>
                 </div>
-              ))}
+              )) : (
+                <div style={{ fontSize: 13, color: 'var(--on-surface-variant)' }}>No safety events recorded.</div>
+              )}
             </div>
           </div>
         </div>

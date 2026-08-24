@@ -1,24 +1,18 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSharedDemoState } from '../../utils/useSharedDemoState';
 import { useAuthorityRealtime } from '../utils/AuthorityRealtimeContext';
 import LiveTouristLeaflet from '../components/LiveTouristLeaflet';
-import { useAuth } from '../../utils/AuthContext';
 import './AuthorityMap.css';
-import { DEMO_TOURIST } from '../../utils/constants';
 
 export default function AuthorityMap() {
   const navigate = useNavigate();
-  const { isDemoMode } = useAuth();
-  const { incident } = useSharedDemoState();
   const { realtimeIncidents, activeTourists } = useAuthorityRealtime();
-  
+
   const [filter, setFilter] = useState('ALL'); // ALL, ONLINE, SOS, HIGH RISK
   const [selectedTouristId, setSelectedTouristId] = useState(null);
   const [followMode, setFollowMode] = useState(false);
   const [fitBoundsTrigger, setFitBoundsTrigger] = useState(0);
 
-  // Combine local and realtime incidents for the map
   const mappedRealtimeIncidents = Object.values(realtimeIncidents).map(inc => ({
     id: inc.id,
     touristId: inc.tourists?.safety_id || inc.tourist_id,
@@ -29,19 +23,17 @@ export default function AuthorityMap() {
     lng: inc.longitude
   }));
 
-  const isDemoActiveLocally = isDemoMode && incident.active && !mappedRealtimeIncidents.some(r => r.id === incident.id);
-
-  const allActiveIncidents = [
-    ...mappedRealtimeIncidents,
-    ...(isDemoActiveLocally ? [{...incident, lat: 25.5788, lng: 91.8933, touristId: DEMO_TOURIST.id}] : [])
-  ];
+  const allActiveIncidents = mappedRealtimeIncidents;
 
   // Map activeTourists into UI format, injecting severity from incidents
   const mappedActiveTourists = Object.values(activeTourists).map(t => {
     // Find if this tourist has an active incident
     const activeInc = allActiveIncidents.find(inc => inc.touristId === t.id || inc.touristId === t.safety_id);
-    let severity = 'SAFE';
-    if (activeInc) severity = activeInc.severity;
+    let severity = t.current_safety_severity || 'SAFE';
+    
+    if (activeInc && (activeInc.severity === 'CRITICAL' || activeInc.severity === 'HIGH')) {
+        severity = activeInc.severity;
+    }
 
     return {
       id: t.id,
@@ -54,20 +46,6 @@ export default function AuthorityMap() {
       isDemo: false
     };
   });
-
-  // Add the demo tourist if active
-  if (isDemoActiveLocally) {
-    mappedActiveTourists.push({
-      id: DEMO_TOURIST.id,
-      safety_id: DEMO_TOURIST.id,
-      name: DEMO_TOURIST.name,
-      lat: window.tgLastLat || 25.5788,
-      lng: window.tgLastLng || 91.8933,
-      last_location_update: new Date().toISOString(),
-      severity: incident.severity,
-      isDemo: true
-    });
-  }
 
   const metrics = useMemo(() => {
     let online = mappedActiveTourists.length;
@@ -207,10 +185,9 @@ export default function AuthorityMap() {
               <div className="panel-actions">
                 {selectedTourist.severity === 'CRITICAL' && (
                   <button className="panel-btn critical-btn" onClick={() => {
-                    const inc = allActiveIncidents.find(i => i.touristId === selectedTourist.id || i.touristId === selectedTourist.safety_id);
-                    if (inc) navigate(`/authority/incident/${inc.id}`);
+                    navigate(`/authority/tourist/${selectedTourist.id}`);
                   }}>
-                    VIEW INCIDENT
+                    VIEW DETAILS
                   </button>
                 )}
                 

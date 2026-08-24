@@ -461,3 +461,41 @@ input, select, textarea {
   /* If necessary, components with hardcoded white backgrounds in inline styles will need to use CSS variables. */
 }
 
+/* ---------- Accessibility Extensions ---------- */
+:root[data-a11y-large-text="true"] {
+  font-size: 18px;
+}
+:root[data-a11y-large-text="true"] .text-headline-lg {
+  font-size: 36px;
+  line-height: 44px;
+}
+:root[data-a11y-large-text="true"] .text-body-md {
+  font-size: 18px;
+  line-height: 28px;
+}
+:root[data-a11y-large-text="true"] .btn {
+  font-size: 18px;
+}
+
+:root[data-a11y-high-contrast="true"] {
+  --surface-container-lowest: #ffffff;
+  --on-surface: #000000;
+  --on-surface-variant: #000000;
+  --outline: #000000;
+  --surface-variant: #eeeeee;
+}
+:root[data-a11y-high-contrast="true"][data-theme="dark"] {
+  --surface-container-lowest: #000000;
+  --on-surface: #ffffff;
+  --on-surface-variant: #ffffff;
+  --outline: #ffffff;
+  --surface-variant: #222222;
+}
+
+:root[data-a11y-reduce-motion="true"] * {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
