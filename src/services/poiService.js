@@ -7,7 +7,8 @@
 
 import { saveOfflineData, getOfflineData } from './offlineService';
 
-const OVERPASS_API_URL = 'https://overpass-api.de/api/interpreter';
+// Direct URL removed to force use of our Vercel API proxy
+// const OVERPASS_API_URL = 'https://overpass-api.de/api/interpreter';
 
 // Simple memory cache: key -> data
 // A more robust implementation might use IndexedDB, but memory is fine for a single session.
@@ -77,31 +78,14 @@ export async function searchNearbyPOIs(categoryKey, lat, lon, radius = 5000) {
     throw new Error('OFFLINE');
   }
 
-  console.log(`[POI] Fetching ${categoryKey} around ${lat},${lon} (radius ${radius}m)...`);
-
-  // Overpass QL to find nodes/ways/relations around a coordinate
-  const query = `
-    [out:json][timeout:25];
-    (
-      node${category.query}(around:${radius},${lat},${lon});
-      way${category.query}(around:${radius},${lat},${lon});
-      relation${category.query}(around:${radius},${lat},${lon});
-    );
-    out center;
-  `;
+  console.log(`[POI] Fetching ${categoryKey} around ${lat},${lon} (radius ${radius}m) via proxy...`);
 
   try {
-    const response = await fetch(OVERPASS_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      body: `data=${encodeURIComponent(query)}`
-    });
+    const response = await fetch(`/api/nearby-services?lat=${lat}&lng=${lon}&radius=${radius}&category=${categoryKey}`);
 
     if (!response.ok) {
       if (response.status === 429) throw new Error('RATE_LIMIT');
-      throw new Error(`Overpass API error: ${response.status}`);
+      throw new Error(`API error: ${response.status}`);
     }
 
     const data = await response.json();
