@@ -281,3 +281,30 @@ export async function updateLiveSafetyState(score, severity, signals = []) {
     return { data: null, error };
   }
 }
+
+export async function updateLastSeen() {
+  try {
+    if (!supabase) return { error: { message: 'Supabase not configured' } };
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: 'Not authenticated' };
+
+    const { data, error } = await supabase.from('tourists')
+      .update({
+        last_seen: new Date().toISOString()
+      })
+      .eq('auth_user_id', user.id)
+      .select()
+      .maybeSingle();
+
+    if (error) {
+      console.warn('[Tourist Service] Failed to update last_seen:', error.message);
+      return { data: null, error: error.message };
+    }
+    
+    return { data, error: null };
+  } catch (error) {
+    console.error('[Tourist Service] Exception updating last_seen:', error);
+    return { data: null, error };
+  }
+}

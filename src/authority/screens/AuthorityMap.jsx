@@ -45,6 +45,7 @@ export default function AuthorityMap() {
       lat: t.current_latitude,
       lng: t.current_longitude,
       last_location_update: t.last_location_update,
+      last_seen: t.last_seen,
       severity: severity,
       isDemo: false
     };
@@ -87,7 +88,17 @@ export default function AuthorityMap() {
     return () => clearInterval(interval);
   }, []);
 
-  const selectedLiveInfo = selectedTourist ? getLiveStatus(selectedTourist.last_location_update, currentTime) : null;
+  const selectedLiveInfo = selectedTourist 
+    ? getLiveStatus(
+        selectedTourist.last_seen || selectedTourist.last_location_update
+          ? Math.max(
+              selectedTourist.last_seen ? new Date(selectedTourist.last_seen).getTime() : 0, 
+              selectedTourist.last_location_update ? new Date(selectedTourist.last_location_update).getTime() : 0
+            ) 
+          : null,
+        currentTime
+      ) 
+    : null;
 
   return (
     <div className="authority-map-screen">

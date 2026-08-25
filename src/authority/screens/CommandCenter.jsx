@@ -45,8 +45,11 @@ export default function CommandCenter() {
       }
       
       // Find the most recent activity timestamp for sorting
-      // Either their last location update, or their most recent incident
-      let lastActivityTime = new Date(t.last_location_update).getTime();
+      // Either their last location update, their last seen heartbeat, or their most recent incident
+      let lastActivityTime = Math.max(
+        t.last_location_update ? new Date(t.last_location_update).getTime() : 0,
+        t.last_seen ? new Date(t.last_seen).getTime() : 0
+      );
       if (touristIncidents.length > 0) {
         const latestIncTime = Math.max(...touristIncidents.map(i => new Date(i.updated_at || i.created_at).getTime()));
         if (latestIncTime > lastActivityTime) lastActivityTime = latestIncTime;
@@ -64,7 +67,10 @@ export default function CommandCenter() {
         safety_id: t.safety_id,
         name: t.name,
         location: t.current_latitude && t.current_longitude ? `${t.current_latitude.toFixed(4)}, ${t.current_longitude.toFixed(4)}` : 'Unknown',
-        last_update_str: formatRelativeTime(t.last_location_update),
+        last_update_str: formatRelativeTime(new Date(Math.max(
+          t.last_location_update ? new Date(t.last_location_update).getTime() : 0,
+          t.last_seen ? new Date(t.last_seen).getTime() : 0
+        )).toISOString()),
         priority,
         priorityScore,
         lastActivityTime,

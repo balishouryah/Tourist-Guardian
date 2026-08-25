@@ -50,12 +50,12 @@ export function AuthorityRealtimeProvider({ children }) {
 
     const fetchActiveTourists = async () => {
       try {
-        // Fetch tourists that have updated their location within the last 5 minutes
+        // Fetch tourists that have updated their location OR last_seen within the last 5 minutes
         const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
         const { data, error } = await authoritySupabase
           .from('tourists')
-          .select('id, name, safety_id, current_latitude, current_longitude, last_location_update, current_safety_score, current_safety_severity, current_safety_signals')
-          .gte('last_location_update', fiveMinutesAgo);
+          .select('id, name, safety_id, current_latitude, current_longitude, last_location_update, last_seen, current_safety_score, current_safety_severity, current_safety_signals')
+          .or(`last_location_update.gte.${fiveMinutesAgo},last_seen.gte.${fiveMinutesAgo}`);
 
         if (error) {
           console.error('[Authority Realtime] Initial fetch tourists error:', error);
@@ -142,12 +142,15 @@ export function AuthorityRealtimeProvider({ children }) {
 
         const updatedTourist = payload.new;
         
-        // Only care if they have location data
-        if (updatedTourist && updatedTourist.last_location_update) {
-           setActiveTourists(prev => ({
-             ...prev,
-             [updatedTourist.id]: updatedTourist
-           }));
+        // Ensure we gracefully merge since updates may not have all columns if REPLICA IDENTITY is DEFAULT
+        if (updatedTourist && (updatedTourist.last_location_update || updatedTourist.last_seen)) {
+           setActiveTourists(prev => {
+             const existing = prev[updatedTourist.id] || {};
+             return {
+               ...prev,
+               [updatedTourist.id]: { ...existing, ...updatedTourist }
+             };
+           });
         }
       })
       .subscribe((status, err) => {
@@ -158,7 +161,6 @@ export function AuthorityRealtimeProvider({ children }) {
         }
       });
 
-    // Cleanup active tourists every minute (remove stale ones)
     const cleanupInterval = setInterval(() => {
       if (!isMounted) return;
       const now = Date.now();
@@ -167,7 +169,11 @@ export function AuthorityRealtimeProvider({ children }) {
         let changed = false;
         Object.keys(next).forEach(id => {
           const t = next[id];
-          if (t.last_location_update && (now - new Date(t.last_location_update).getTime() > 5 * 60 * 1000)) {
+          const lastLocTime = t.last_location_update ? new Date(t.last_location_update).getTime() : 0;
+          const lastSeenTime = t.last_seen ? new Date(t.last_seen).getTime() : 0;
+          const latestActivityTime = Math.max(lastLocTime, lastSeenTime);
+          
+          if (latestActivityTime > 0 && (now - latestActivityTime > 5 * 60 * 1000)) {
             delete next[id];
             changed = true;
           }

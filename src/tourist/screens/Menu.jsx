@@ -14,6 +14,7 @@ export default function Menu() {
         { icon: 'person', label: 'My Profile', description: 'Your tourist information', path: '/tourist/profile' },
         { icon: 'offline_bolt', label: 'Offline Safety', description: 'Prepare for low-connectivity areas', path: '/tourist/offline' },
         { icon: 'view_in_ar', label: 'AR Safety View', description: 'Explore your surroundings', path: '/tourist/ar' },
+        { icon: 'explore', label: 'Nearby Services', description: 'Find hospitals, police & more', path: '/tourist/nearby' },
         { icon: 'family_restroom', label: 'Family Tracking', description: 'Share your live location', path: '/tourist/settings/family-tracking' },
       ]
     },

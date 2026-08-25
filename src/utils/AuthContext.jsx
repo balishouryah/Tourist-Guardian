@@ -149,6 +149,39 @@ export function AuthProvider({ children }) {
     };
   }, [user, touristProfile?.id]);
 
+  // NEW: Heartbeat for online status (last_seen)
+  useEffect(() => {
+    if (!user || !touristProfile?.id || isDemoMode) return;
+    
+    let isMounted = true;
+    let heartbeatInterval;
+    
+    // Import dynamically to avoid circular dependencies
+    const startHeartbeat = async () => {
+      try {
+        const { updateLastSeen } = await import('../services/touristService');
+        // Initial ping
+        if (isMounted) updateLastSeen();
+        
+        // Setup interval for every 60 seconds
+        heartbeatInterval = setInterval(() => {
+          if (isMounted && typeof navigator !== 'undefined' && navigator.onLine) {
+            updateLastSeen();
+          }
+        }, 60000);
+      } catch (err) {
+        console.error('Error starting heartbeat:', err);
+      }
+    };
+    
+    startHeartbeat();
+    
+    return () => {
+      isMounted = false;
+      if (heartbeatInterval) clearInterval(heartbeatInterval);
+    };
+  }, [user, touristProfile?.id, isDemoMode]);
+
   const enableDemoMode = () => {
     setIsDemoMode(true);
     localStorage.setItem('tg_demo_mode', 'true');
