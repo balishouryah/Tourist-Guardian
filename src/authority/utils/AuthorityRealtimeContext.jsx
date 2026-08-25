@@ -112,6 +112,11 @@ export function AuthorityRealtimeProvider({ children }) {
           
           if (touristData) {
             console.log(`[AUTHORITY REALTIME] Tourist resolved: ${touristData.name}`);
+            // Explicitly add to activeTourists so it renders in CommandCenter even if no recent heartbeat
+            setActiveTourists(prev => ({
+              ...prev,
+              [newRow.tourist_id]: { ...(prev[newRow.tourist_id] || {}), ...touristData }
+            }));
           }
           
           setRealtimeIncidents(prev => ({

@@ -140,7 +140,7 @@ export default function IncidentToast() {
               <button 
                 onClick={() => {
                   setToasts(prev => prev.filter(t => t.id !== toast.id));
-                  navigate(`/authority/tourist/${toast.touristId}`);
+                  navigate(`/authority/incident/${toast.id}`);
                 }}
                 style={{
                   background: 'var(--error)',
