@@ -205,11 +205,11 @@ export default function Dashboard() {
           <div style={{ padding: '16px' }}>
             {liveSafety?.currentZone ? (
               <>
-                <h4 style={{ margin: '0 0 8px 0', fontSize: 16 }}>{liveSafety.currentZone.type === 'DANGER' ? '🔴 HIGH-RISK AREA' : '🟡 CAUTION AREA'}</h4>
+                <h4 style={{ margin: '0 0 8px 0', fontSize: 16 }}>{liveSafety.currentZone.type === 'DANGER' ? '⚠️ HIGH-RISK AREA' : '⚠️ You have entered a caution zone.'}</h4>
                 <p style={{ margin: 0, fontSize: 14, opacity: 0.9 }}>
                   {liveSafety.currentZone.type === 'DANGER' 
-                    ? `You have entered a monitored high-risk zone: ${liveSafety.currentZone.name}. Consider moving toward a nearby safe location.` 
-                    : `You have entered a monitored caution zone: ${liveSafety.currentZone.name}. Stay aware of your surroundings.`}
+                    ? `You have entered a designated high-risk zone. Please proceed carefully. (${liveSafety.currentZone.name})` 
+                    : `Please stay aware of your surroundings. (${liveSafety.currentZone.name})`}
                 </p>
                 
                 {liveSafety.currentZone.type === 'DANGER' && (
@@ -268,6 +268,20 @@ export default function Dashboard() {
               </>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Family Tracking Shortcut */}
+      {!isDemoMode && (
+        <div className="card" style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }} onClick={() => navigate('/tourist/settings/family-tracking')}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 28, color: 'var(--primary)' }}>family_restroom</span>
+            <div>
+              <h4 style={{ margin: 0, fontSize: 16 }}>Family Tracking</h4>
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--on-surface-variant)' }}>Share live location with family</p>
+            </div>
+          </div>
+          <span className="material-symbols-outlined" style={{ color: 'var(--on-surface-variant)' }}>chevron_right</span>
         </div>
       )}
 

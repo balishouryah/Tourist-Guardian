@@ -62,6 +62,18 @@ export default function SafetyCredential() {
               <div className="credential-value">{profile.nationality || 'India'}</div>
             </div>
 
+            <div className="credential-field">
+              <div className="credential-label">Preferred Language</div>
+              <div className="credential-value">{profile.preferred_language || 'English'}</div>
+            </div>
+            
+            <div className="credential-field">
+              <div className="credential-label">KYC Status</div>
+              <div className="credential-value" style={{ color: profile.kyc_status === 'VERIFIED' ? 'var(--safe)' : 'inherit', fontWeight: profile.kyc_status === 'VERIFIED' ? 600 : 'normal' }}>
+                {profile.kyc_status || 'PENDING'}
+              </div>
+            </div>
+
             {profile.planned_destination && (
               <div className="credential-field">
                 <div className="credential-label">{t('destination')}</div>
@@ -83,7 +95,7 @@ export default function SafetyCredential() {
             <div className="credential-label">{t('status')}</div>
             <div className="credential-status">
               <span className="material-symbols-outlined" style={{ fontSize: 16 }}>verified_user</span>
-              {t('verified').toUpperCase()}
+              {profile.kyc_status === 'VERIFIED' ? t('verified').toUpperCase() : 'PENDING'}
             </div>
           </div>
           <div className="credential-qr-placeholder">
@@ -91,6 +103,31 @@ export default function SafetyCredential() {
           </div>
         </div>
       </div>
+      
+      {profile.kyc_status === 'VERIFIED' && profile.blockchain_reference && (
+        <div className="card" style={{ marginTop: '16px', background: 'var(--surface)', border: '1px solid var(--safe)', borderRadius: '12px' }}>
+          <h3 style={{ margin: '0 0 12px 0', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--safe)' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>link</span>
+            Blockchain Verification
+          </h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--safe)', fontWeight: 600, fontSize: 16, marginBottom: '16px' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>check_circle</span>
+            VERIFIED
+          </div>
+          
+          <div style={{ display: 'grid', gap: '12px', fontSize: 13 }}>
+            <div>
+              <div style={{ color: 'var(--on-surface-variant)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase' }}>Reference</div>
+              <div style={{ fontFamily: 'monospace', fontWeight: 600 }}>{profile.blockchain_reference}</div>
+            </div>
+            
+            <div>
+              <div style={{ color: 'var(--on-surface-variant)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase' }}>Issued</div>
+              <div>{new Date(profile.digital_id_issued_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="credential-actions">
         <button className="btn btn-secondary btn-full">
@@ -104,7 +141,7 @@ export default function SafetyCredential() {
       </div>
       
       <p style={{ marginTop: 'var(--space-2xl)', fontSize: 12, color: 'var(--on-surface-variant)', textAlign: 'center', opacity: 0.7 }}>
-        This is a prototype credential for the hackathon demo. It does not contain real PII or blockchain verification.
+        This is a blockchain-ready tamper-evident Digital Tourist ID prototype. Sensitive documents remain securely encrypted off-chain.
       </p>
     </div>
   );

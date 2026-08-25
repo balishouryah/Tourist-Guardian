@@ -13,6 +13,9 @@ export default function AuthorityMap() {
   const [followMode, setFollowMode] = useState(false);
   const [fitBoundsTrigger, setFitBoundsTrigger] = useState(0);
 
+  const [layerMode, setLayerMode] = useState('MARKERS'); // 'MARKERS', 'HEATMAP', 'BOTH'
+  const [heatType, setHeatType] = useState('TOURIST'); // 'TOURIST', 'INCIDENT'
+
   const mappedRealtimeIncidents = Object.values(realtimeIncidents).map(inc => ({
     id: inc.id,
     touristId: inc.tourists?.safety_id || inc.tourist_id,
@@ -142,6 +145,8 @@ export default function AuthorityMap() {
               }}
               followMode={followMode}
               triggerFitBounds={fitBoundsTrigger}
+              layerMode={layerMode}
+              heatType={heatType}
             />
           )}
 
@@ -201,8 +206,41 @@ export default function AuthorityMap() {
           )}
 
           {/* Global Map Controls */}
-          <div className="authority-map-global-controls">
-             <button className="authority-map-control-btn" onClick={() => setFitBoundsTrigger(prev => prev + 1)}>
+          <div className="authority-map-global-controls" style={{ display: 'flex', flexDirection: 'column', gap: '8px', right: '20px', bottom: '20px' }}>
+            <div style={{ background: 'var(--surface)', padding: '12px', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', display: 'flex', flexDirection: 'column', gap: '8px', width: '200px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--on-surface-variant)' }}>MAP LAYERS</div>
+              
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer' }}>
+                <input type="radio" name="layerMode" checked={layerMode === 'MARKERS'} onChange={() => setLayerMode('MARKERS')} />
+                Markers Only
+              </label>
+              
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer' }}>
+                <input type="radio" name="layerMode" checked={layerMode === 'HEATMAP'} onChange={() => setLayerMode('HEATMAP')} />
+                Heat Map Only
+              </label>
+              
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer' }}>
+                <input type="radio" name="layerMode" checked={layerMode === 'BOTH'} onChange={() => setLayerMode('BOTH')} />
+                Markers + Heat Map
+              </label>
+
+              {layerMode !== 'MARKERS' && (
+                <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--outline-variant)' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--on-surface-variant)', marginBottom: '4px' }}>HEAT SOURCE</div>
+                  <select 
+                    value={heatType} 
+                    onChange={e => setHeatType(e.target.value)}
+                    style={{ width: '100%', padding: '4px', fontSize: '12px', borderRadius: '4px', border: '1px solid var(--outline)' }}
+                  >
+                    <option value="TOURIST">Tourist Density (Live)</option>
+                    <option value="INCIDENT">Incident Density</option>
+                  </select>
+                </div>
+              )}
+            </div>
+
+            <button className="authority-map-control-btn" onClick={() => setFitBoundsTrigger(prev => prev + 1)}>
                <span className="material-symbols-outlined">center_focus_strong</span>
                CENTER ON ALL
              </button>

@@ -143,6 +143,8 @@ export function useSafetyEngine() {
           risk_score: newRisk.score,
           detected_signals: ['Exited Zone']
         }, isOnline);
+        
+        window.alert(`You have safely exited the monitored zone.`);
       }
       
       if (activeZone) {
@@ -156,6 +158,12 @@ export function useSafetyEngine() {
           risk_score: newRisk.score,
           detected_signals: newRisk.signals
         }, isOnline);
+        
+        if (activeZone.type === 'DANGER') {
+          window.alert(`⚠️ HIGH-RISK AREA\n\nYou have entered a designated high-risk zone. Please proceed carefully.\nZone: ${activeZone.name}`);
+        } else if (activeZone.type === 'CAUTION') {
+          window.alert(`⚠️ You have entered a caution zone.\nZone: ${activeZone.name}`);
+        }
       }
       lastZoneId.current = currentZoneId;
     }

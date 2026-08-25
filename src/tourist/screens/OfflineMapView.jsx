@@ -4,6 +4,16 @@ import { useLiveLocation } from '../../utils/LocationContext';
 import { OFFLINE_REGIONS } from '../../services/offlineMapService';
 import { useOfflineStatus } from '../../utils/useOfflineStatus';
 import { useLanguage } from '../../utils/LanguageContext';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
+
+// Fix for default Leaflet marker icons not loading in Vite
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
 
 export default function OfflineMapView() {
   const { t } = useLanguage();
@@ -32,31 +42,10 @@ export default function OfflineMapView() {
     );
   }
 
-  // Calculate GPS overlay position if metadata and GPS are available
-  let gpsStyle = null;
-  if (meta && currentLoc.latitude && currentLoc.longitude) {
-    const { bounds, width, height } = meta;
-    
-    // Check if GPS is within bounds roughly
-    if (
-      currentLoc.longitude >= bounds.minLon &&
-      currentLoc.longitude <= bounds.maxLon &&
-      currentLoc.latitude >= bounds.minLat &&
-      currentLoc.latitude <= bounds.maxLat
-    ) {
-      // Linear mapping
-      const xPercent = (currentLoc.longitude - bounds.minLon) / (bounds.maxLon - bounds.minLon);
-      const yPercent = (bounds.maxLat - currentLoc.latitude) / (bounds.maxLat - bounds.minLat);
-      
-      gpsStyle = {
-        position: 'absolute',
-        left: `${xPercent * width}px`,
-        top: `${yPercent * height}px`,
-        transform: 'translate(-50%, -100%)', // Anchor at bottom center like a map pin
-        zIndex: 50,
-      };
-    }
-  }
+  const mapCenter = [
+    (region.bounds.minLat + region.bounds.maxLat) / 2,
+    (region.bounds.minLon + region.bounds.maxLon) / 2
+  ];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', overflow: 'hidden', background: '#f0f0f0' }}>
@@ -80,26 +69,26 @@ export default function OfflineMapView() {
         </div>
       </div>
 
-      {/* Static Image Map Viewer (Pan/Zoom via overflow) */}
-      <div style={{ flex: 1, overflow: 'auto', position: 'relative', touchAction: 'pan-x pan-y' }}>
-        <div style={{ position: 'relative', display: 'inline-block' }}>
-          <img 
-            src={`/offline-maps/${city}.png`} 
-            alt={`Offline map of ${region.name}`}
-            style={{ display: 'block', minWidth: '100vw' }}
+      {/* Leaflet Map Viewer */}
+      <div style={{ flex: 1, position: 'relative', zIndex: 1 }}>
+        <MapContainer 
+          center={mapCenter} 
+          zoom={12} 
+          style={{ height: '100%', width: '100%' }}
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
 
-          {gpsStyle ? (
-            <div style={gpsStyle}>
-              <span className="material-symbols-outlined" style={{ fontSize: 32, color: 'var(--primary)', filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.5))' }}>
-                location_on
-              </span>
-              <div style={{ background: 'var(--surface)', padding: '4px 8px', borderRadius: '4px', fontSize: 10, fontWeight: 'bold', whiteSpace: 'nowrap', boxShadow: '0 2px 4px rgba(0,0,0,0.2)', position: 'absolute', top: '-24px', left: '50%', transform: 'translateX(-50%)' }}>
-                {t('your_location').toUpperCase()}
-              </div>
-            </div>
-          ) : null}
-        </div>
+          {currentLoc.latitude && currentLoc.longitude && (
+            <Marker position={[currentLoc.latitude, currentLoc.longitude]}>
+              <Popup>
+                <strong>{t('your_location').toUpperCase()}</strong>
+              </Popup>
+            </Marker>
+          )}
+        </MapContainer>
       </div>
 
       {/* Status Bar */}

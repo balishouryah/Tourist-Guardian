@@ -47,6 +47,11 @@ import HelpSupport from './tourist/screens/settings/HelpSupport';
 import LanguageSettings from './tourist/screens/settings/LanguageSettings';
 import LiveVoiceTranslator from './tourist/screens/settings/LiveVoiceTranslator';
 import KYCVerification from './tourist/screens/KYCVerification';
+import FamilyTracking from './tourist/screens/settings/FamilyTracking';
+
+// Family Viewer
+import FamilyView from './family/FamilyView';
+import FamilyInvite from './family/FamilyInvite';
 
 // Authority screens
 import CommandCenter from './authority/screens/CommandCenter';
@@ -55,6 +60,9 @@ import AuthorityKYCCenter from './authority/screens/AuthorityKYCCenter';
 import IncidentDetail from './authority/screens/IncidentDetail';
 import RiskIntelligence from './authority/screens/RiskIntelligence';
 import AuthorityMap from './authority/screens/AuthorityMap';
+import AuthorityEFIRCenter from './authority/screens/AuthorityEFIRCenter';
+import EFIRDetail from './authority/screens/EFIRDetail';
+import AuthorityTourists from './authority/screens/AuthorityTourists';
 
 function RequireAuth({ children }) {
   const { user, isDemoMode, loading } = useAuth();
@@ -111,6 +119,10 @@ export default function App() {
               <Route path="/tourist/login" element={<Login />} />
               <Route path="/tourist/onboarding" element={<CreateProfile />} />
 
+              {/* Family tracking viewer & invite */}
+              <Route path="/family/track/:token" element={<FamilyView />} />
+              <Route path="/family/invite/:token" element={<FamilyInvite />} />
+
               {/* Tourist experience — mobile-first layout */}
               <Route path="/tourist" element={
                 <LocationProvider>
@@ -147,6 +159,7 @@ export default function App() {
                 <Route path="settings/emergency" element={<EmergencyContacts />} />
                 <Route path="settings/kyc" element={<KYCVerification />} />
                 <Route path="settings/translator" element={<LiveVoiceTranslator />} />
+                <Route path="settings/family-tracking" element={<FamilyTracking />} />
               </Route>
 
               {/* Authority experience — desktop-first layout */}
@@ -160,9 +173,12 @@ export default function App() {
                 <Route path="dashboard" element={<CommandCenter />} />
                 <Route path="risk-center" element={<AIRiskCenter />} />
                 <Route path="kyc" element={<AuthorityKYCCenter />} />
+                <Route path="efirs" element={<AuthorityEFIRCenter />} />
+                <Route path="efir/:id" element={<EFIRDetail />} />
                 <Route path="tourist/:id" element={<IncidentDetail />} />
                 <Route path="intelligence" element={<RiskIntelligence />} />
                 <Route path="map" element={<AuthorityMap />} />
+                <Route path="tourists" element={<AuthorityTourists />} />
                 </Route>
               </Routes>
                 </BrowserRouter>

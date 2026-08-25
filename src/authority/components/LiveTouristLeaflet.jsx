@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
+import HeatmapLayer from './HeatmapLayer';
 import { DEMO_MAP_DATA } from '../../utils/mockMapData';
 
 // Fix for default Leaflet marker icons not loading in Vite
@@ -82,7 +83,9 @@ export default function LiveTouristLeaflet({
   onTouristSelect = () => {},
   onTouristViewAction = null,
   followMode = false,
-  triggerFitBounds = 0 // changing this number triggers fitbounds
+  triggerFitBounds = 0, // changing this number triggers fitbounds
+  layerMode = 'MARKERS', // 'MARKERS', 'HEATMAP', 'BOTH'
+  heatType = 'TOURIST' // 'TOURIST', 'INCIDENT'
 }) {
   const mapRef = useRef(null);
 
@@ -127,6 +130,31 @@ export default function LiveTouristLeaflet({
     });
   };
 
+  // Compute Heatmap Points
+  const heatPoints = React.useMemo(() => {
+    if (layerMode === 'MARKERS') return [];
+    
+    if (heatType === 'TOURIST') {
+      return tourists
+        .filter(t => t.lat && t.lng)
+        .map(t => {
+          // Base intensity
+          let intensity = 0.5; 
+          // Boost intensity based on severity
+          if (t.severity === 'CRITICAL') intensity = 1.0;
+          if (t.severity === 'HIGH_RISK' || t.severity === 'HIGH') intensity = 0.8;
+          return [t.lat, t.lng, intensity];
+        });
+    } else { // INCIDENT
+      return incidents
+        .filter(inc => inc.lat && inc.lng)
+        .map(inc => {
+          let intensity = inc.status === 'ACTIVE' ? 1.0 : 0.6;
+          return [inc.lat, inc.lng, intensity];
+        });
+    }
+  }, [tourists, incidents, layerMode, heatType]);
+
   // Fallback map center (India)
   const defaultCenter = [22.9734, 78.6569];
 
@@ -167,81 +195,97 @@ export default function LiveTouristLeaflet({
           followMode={followMode}
         />
 
-        <MarkerClusterGroup 
-          chunkedLoading 
-          iconCreateFunction={createClusterCustomIcon}
-          maxClusterRadius={40}
-        >
-          {tourists.map(t => {
-            if (!t.lat || !t.lng) return null;
-            return (
-              <Marker 
-                key={`t-${t.id}`} 
-                position={[t.lat, t.lng]} 
-                icon={getTouristIcon(t.severity)}
-                eventHandlers={{
-                  click: () => onTouristSelect(t.id)
-                }}
-              >
-                <Popup>
-                  <div style={{ padding: '4px', minWidth: '180px' }}>
-                    <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '2px' }}>
-                      {t.name?.toUpperCase() || 'UNKNOWN'} {t.isDemo && '(DEMO)'}
-                    </div>
-                    <div style={{ fontSize: '11px', color: '#666', fontFamily: 'monospace', marginBottom: '8px' }}>
-                      {t.safety_id || t.id}
-                    </div>
-                    
-                    <div style={{ 
-                      fontSize: '11px', 
-                      fontWeight: 'bold', 
-                      color: t.severity === 'CRITICAL' ? '#dc2626' : t.severity === 'HIGH_RISK' || t.severity === 'HIGH' ? '#f97316' : t.severity === 'CAUTION' ? '#eab308' : '#16a34a',
-                      marginBottom: '4px'
-                    }}>
-                      {getSeverityLabel(t.severity)}
-                    </div>
-                    
-                    {t.score !== undefined && (
-                      <div style={{ fontSize: '12px', marginBottom: '4px' }}>
-                        Safety Score: <strong>{t.score}/100</strong>
-                      </div>
-                    )}
-                    
-                    {t.last_location_update && (
-                      <div style={{ fontSize: '11px', color: '#666', marginBottom: '10px' }}>
-                        Last update:<br/>
-                        {new Date(Date.now() - new Date(t.last_location_update).getTime()).getMinutes() < 2 ? 'Just now' : `${Math.floor((Date.now() - new Date(t.last_location_update).getTime()) / 60000)} minutes ago`}
-                      </div>
-                    )}
+        {['HEATMAP', 'BOTH'].includes(layerMode) && heatPoints.length > 0 && (
+          <HeatmapLayer 
+            points={heatPoints} 
+            options={{ 
+              radius: heatType === 'TOURIST' ? 25 : 35, 
+              blur: 15, 
+              maxZoom: 15,
+              gradient: heatType === 'TOURIST' 
+                ? { 0.4: 'blue', 0.6: 'cyan', 0.7: 'lime', 0.8: 'yellow', 1.0: 'red' }
+                : { 0.4: 'yellow', 0.8: 'orange', 1.0: 'red' }
+            }} 
+          />
+        )}
 
-                    {onTouristViewAction && (
-                      <button 
-                        onClick={() => onTouristViewAction(t.id)}
-                        style={{
-                          width: '100%',
-                          background: 'var(--primary)',
-                          color: '#fff',
-                          border: 'none',
-                          padding: '6px 0',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          fontWeight: 'bold',
-                          cursor: 'pointer',
-                          textTransform: 'uppercase'
-                        }}
-                      >
-                        View Tourist
-                      </button>
-                    )}
-                  </div>
-                </Popup>
-              </Marker>
-            );
-          })}
-        </MarkerClusterGroup>
+        {['MARKERS', 'BOTH'].includes(layerMode) && (
+          <MarkerClusterGroup 
+            chunkedLoading 
+            iconCreateFunction={createClusterCustomIcon}
+            maxClusterRadius={40}
+          >
+            {tourists.map(t => {
+              if (!t.lat || !t.lng) return null;
+              return (
+                <Marker 
+                  key={`t-${t.id}`} 
+                  position={[t.lat, t.lng]} 
+                  icon={getTouristIcon(t.severity)}
+                  eventHandlers={{
+                    click: () => onTouristSelect(t.id)
+                  }}
+                >
+                  <Popup>
+                    <div style={{ padding: '4px', minWidth: '180px' }}>
+                      <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '2px' }}>
+                        {t.name?.toUpperCase() || 'UNKNOWN'} {t.isDemo && '(DEMO)'}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#666', fontFamily: 'monospace', marginBottom: '8px' }}>
+                        {t.safety_id || t.id}
+                      </div>
+                      
+                      <div style={{ 
+                        fontSize: '11px', 
+                        fontWeight: 'bold', 
+                        color: t.severity === 'CRITICAL' ? '#dc2626' : t.severity === 'HIGH_RISK' || t.severity === 'HIGH' ? '#f97316' : t.severity === 'CAUTION' ? '#eab308' : '#16a34a',
+                        marginBottom: '4px'
+                      }}>
+                        {getSeverityLabel(t.severity)}
+                      </div>
+                      
+                      {t.score !== undefined && (
+                        <div style={{ fontSize: '12px', marginBottom: '4px' }}>
+                          Safety Score: <strong>{t.score}/100</strong>
+                        </div>
+                      )}
+                      
+                      {t.last_location_update && (
+                        <div style={{ fontSize: '11px', color: '#666', marginBottom: '10px' }}>
+                          Last update:<br/>
+                          {new Date(Date.now() - new Date(t.last_location_update).getTime()).getMinutes() < 2 ? 'Just now' : `${Math.floor((Date.now() - new Date(t.last_location_update).getTime()) / 60000)} minutes ago`}
+                        </div>
+                      )}
+
+                      {onTouristViewAction && (
+                        <button 
+                          onClick={() => onTouristViewAction(t.id)}
+                          style={{
+                            width: '100%',
+                            background: 'var(--primary)',
+                            color: '#fff',
+                            border: 'none',
+                            padding: '6px 0',
+                            borderRadius: '4px',
+                            fontSize: '11px',
+                            fontWeight: 'bold',
+                            cursor: 'pointer',
+                            textTransform: 'uppercase'
+                          }}
+                        >
+                          View Tourist
+                        </button>
+                      )}
+                    </div>
+                  </Popup>
+                </Marker>
+              );
+            })}
+          </MarkerClusterGroup>
+        )}
 
         {/* Historical Incident Locations */}
-        {incidents.map(inc => {
+        {['MARKERS', 'BOTH'].includes(layerMode) && incidents.map(inc => {
           if (!inc.lat || !inc.lng) return null;
           return (
             <Marker

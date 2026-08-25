@@ -9,7 +9,7 @@
  * Simulates generating an SHA-256 hash for the identity payload.
  * Since this is a browser prototype, we use a simple deterministic mock hash.
  */
-function generateIdentityHash(normalizedData) {
+export function generateIdentityHash(normalizedData) {
   const str = JSON.stringify(normalizedData);
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
@@ -92,5 +92,38 @@ export async function verifyIdentity(kycData, safetyId) {
       });
       
     }, 1500); // 1.5s simulated delay
+  });
+}
+
+/**
+ * Simulates an authority verifying the blockchain integrity of a tourist record.
+ * Recalculates the hash from current DB fields and compares to the stored hash.
+ */
+export async function verifyBlockchainIntegrity(touristData) {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      if (!touristData.identity_hash || touristData.blockchain_status !== 'VERIFIED') {
+        resolve({ isValid: false, error: 'No blockchain identity found for this tourist.' });
+        return;
+      }
+
+      // Reconstruct the exact normalized payload used during generation
+      const normalizedData = {
+        name: touristData.name.toUpperCase().trim(),
+        dob: touristData.date_of_birth,
+        nationality: touristData.nationality.toUpperCase().trim(),
+        docType: touristData.kyc_type,
+        docNumber: touristData.kyc_reference, 
+        safetyId: touristData.safety_id || touristData.id
+      };
+      
+      const expectedHash = generateIdentityHash(normalizedData);
+      
+      resolve({
+        isValid: expectedHash === touristData.identity_hash,
+        expectedHash,
+        actualHash: touristData.identity_hash
+      });
+    }, 800);
   });
 }

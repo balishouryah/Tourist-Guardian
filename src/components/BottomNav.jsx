@@ -7,7 +7,7 @@ const tabs = [
   { path: '/tourist/map',       icon: 'map',         label: 'Map' },
   { path: '/tourist/credential',icon: 'verified_user',label: 'Safety ID' },
   { path: '/tourist/alerts',    icon: 'notifications',label: 'Alerts' },
-  { path: '/tourist/nearby',    icon: 'explore',      label: 'Nearby' },
+  { path: '/tourist/settings/family-tracking', icon: 'family_restroom', label: 'Family' },
   { path: '/tourist/menu',      icon: 'menu',         label: 'Menu' },
 ];
 

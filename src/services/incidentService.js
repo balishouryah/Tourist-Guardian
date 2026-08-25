@@ -70,11 +70,75 @@ export async function createIncident({ incidentType, severity, riskScore, signal
     
     console.log(`[TOURIST SOS] Incident created: ${data.id}`);
 
+    // Asynchronously send SOS emails to active family members
+    // We do NOT await this so that the SOS flow is never blocked
+    notifyFamilyOfSOS(profile, data, latitude, longitude).catch(err => {
+      console.error('[SOS] Background family notification failed:', err);
+    });
+
     return { data, error };
   } catch (error) {
     console.error('[SOS] Incident insert failed (Exception):', error);
     alert(`[SOS] EXCEPTION: ${error.message}`);
     return { data: null, error };
+  }
+}
+
+/**
+ * Background task to notify family members when SOS is triggered.
+ */
+async function notifyFamilyOfSOS(profile, incident, latitude, longitude) {
+  try {
+    // 1. Ensure tourist has family tracking enabled
+    const { data: touristInfo, error: tError } = await supabase
+      .from('tourists')
+      .select('name, family_tracking_enabled, safety_id')
+      .eq('id', profile.id)
+      .single();
+      
+    if (tError || !touristInfo || !touristInfo.family_tracking_enabled) return;
+    
+    // 2. Fetch active family relationships
+    const { data: familyMembers, error: fError } = await supabase
+      .from('family_tracking_access')
+      .select('*')
+      .eq('tourist_id', profile.id)
+      .eq('status', 'ACTIVE');
+      
+    if (fError || !familyMembers || familyMembers.length === 0) return;
+    
+    // 3. Send email to each family member
+    const timestamp = new Date().toLocaleString();
+    const locationStr = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+    
+    for (const member of familyMembers) {
+      if (!member.family_contact || !member.family_contact.includes('@')) continue;
+      
+      const liveLink = `${window.location.origin}/family/track/${member.access_token}`;
+      
+      supabase.functions.invoke('family-email', {
+        body: {
+          action: 'sos',
+          touristName: touristInfo.name,
+          safetyId: touristInfo.safety_id || profile.id.split('-')[0].toUpperCase(),
+          familyEmail: member.family_contact,
+          timestamp: timestamp,
+          location: locationStr,
+          liveLink: liveLink
+        }
+      }).catch(err => console.error('Error invoking family-email Edge Function:', err));
+    }
+    // 4. Send notification to the Tourist
+    if (familyMembers.length > 0) {
+      await supabase.from('notifications').insert({
+        tourist_id: profile.id,
+        title: 'SOS family notification',
+        message: 'Emergency notification sent to your authorized family members.',
+        type: 'SYSTEM'
+      });
+    }
+  } catch (err) {
+    console.error('[SOS] Error in notifyFamilyOfSOS:', err);
   }
 }
 

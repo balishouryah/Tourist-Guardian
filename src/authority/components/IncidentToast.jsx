@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthorityRealtime } from '../utils/AuthorityRealtimeContext';
+import { authoritySupabase } from '../../lib/supabase';
 
 export default function IncidentToast() {
   const [toasts, setToasts] = useState([]);
@@ -37,6 +38,36 @@ export default function IncidentToast() {
     }, 15000);
   }, [latestIncident]);
 
+  useEffect(() => {
+    if (!authoritySupabase) return;
+    
+    const channel = authoritySupabase.channel('efir_toast')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'e_firs' }, (payload) => {
+        const newEfir = payload.new;
+        if (newEfir.status !== 'ACTIVE') return;
+
+        const newToast = {
+          id: newEfir.id,
+          type: 'EFIR',
+          touristId: newEfir.tourist_id,
+          touristName: newEfir.tourist_name_snapshot || 'Unknown Tourist',
+          firReference: newEfir.fir_reference,
+          time: new Date(newEfir.generated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        
+        setToasts(prev => [...prev, newToast]);
+        
+        setTimeout(() => {
+          setToasts(prev => prev.filter(t => t.id !== newToast.id));
+        }, 15000);
+      })
+      .subscribe();
+
+    return () => {
+      authoritySupabase.removeChannel(channel);
+    };
+  }, []);
+
   if (toasts.length === 0) return null;
 
   return (
@@ -49,31 +80,61 @@ export default function IncidentToast() {
       flexDirection: 'column',
       gap: '12px'
     }}>
-      {toasts.map(toast => (
-        <div key={toast.id} onClick={() => navigate(`/authority/tourist/${toast.touristId}`)} style={{
-          background: 'var(--surface-container-lowest)',
-          borderLeft: `4px solid ${toast.severity === 'CRITICAL' ? 'var(--error)' : 'var(--caution)'}`,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-          borderRadius: '8px',
-          padding: '16px',
-          width: '320px',
-          cursor: 'pointer',
-          animation: 'slide-up 0.3s ease-out'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <span style={{ fontWeight: 700, fontSize: '15px', color: 'var(--on-surface)' }}>
-              🚨 SOS Alert — {toast.touristName} needs assistance
-            </span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
-            <div style={{ fontSize: '13px', color: 'var(--on-surface-variant)' }}>
-              <span className="material-symbols-outlined" style={{ fontSize: '14px', verticalAlign: 'middle', marginRight: '4px' }}>location_on</span>
-              {toast.location}
+      {toasts.map(toast => {
+        if (toast.type === 'EFIR') {
+          return (
+            <div key={toast.id} onClick={() => navigate(`/authority/efir/${toast.id}`)} style={{
+              background: 'var(--surface-container-lowest)',
+              borderLeft: `4px solid var(--error)`,
+              boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+              borderRadius: '8px',
+              padding: '16px',
+              width: '320px',
+              cursor: 'pointer',
+              animation: 'slide-up 0.3s ease-out'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <span style={{ fontWeight: 700, fontSize: '15px', color: 'var(--on-surface)' }}>
+                  🚨 E-FIR GENERATED
+                </span>
+              </div>
+              <div style={{ fontSize: '13px', color: 'var(--on-surface)' }}>
+                {toast.firReference}<br/>
+                {toast.touristName} — Missing Tourist
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
+                <span style={{ fontSize: '12px', color: 'var(--on-surface-variant)' }}>{toast.time}</span>
+              </div>
             </div>
-            <span style={{ fontSize: '12px', color: 'var(--on-surface-variant)' }}>{toast.time}</span>
+          );
+        }
+
+        return (
+          <div key={toast.id} onClick={() => navigate(`/authority/tourist/${toast.touristId}`)} style={{
+            background: 'var(--surface-container-lowest)',
+            borderLeft: `4px solid ${toast.severity === 'CRITICAL' ? 'var(--error)' : 'var(--caution)'}`,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+            borderRadius: '8px',
+            padding: '16px',
+            width: '320px',
+            cursor: 'pointer',
+            animation: 'slide-up 0.3s ease-out'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <span style={{ fontWeight: 700, fontSize: '15px', color: 'var(--on-surface)' }}>
+                🚨 SOS Alert — {toast.touristName} needs assistance
+              </span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+              <div style={{ fontSize: '13px', color: 'var(--on-surface-variant)' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '14px', verticalAlign: 'middle', marginRight: '4px' }}>location_on</span>
+                {toast.location}
+              </div>
+              <span style={{ fontSize: '12px', color: 'var(--on-surface-variant)' }}>{toast.time}</span>
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
       <style>{`
         @keyframes slide-up {
           from { transform: translateY(20px); opacity: 0; }

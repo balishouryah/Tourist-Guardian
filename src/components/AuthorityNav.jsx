@@ -4,9 +4,11 @@ import './AuthorityNav.css';
 
 const links = [
   { path: '/authority/dashboard',    label: 'Dashboard' },
+  { path: '/authority/efirs',        label: 'E-FIRs' },
   { path: '/authority/risk-center',  label: 'AI Risk' },
   { path: '/authority/kyc',          label: 'KYC Center' },
   { path: '/authority/map',          label: 'Live Map' },
+  { path: '/authority/tourists',     label: 'Tourist Directory' },
 ];
 
 export default function AuthorityNav() {

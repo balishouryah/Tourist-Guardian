@@ -4,6 +4,7 @@ import { useAuthorityRealtime } from '../utils/AuthorityRealtimeContext';
 import { authoritySupabase } from '../../lib/supabase';
 import InteractiveMap from '../../components/InteractiveMap';
 import { formatRelativeTime } from '../../utils/timeUtils';
+import { verifyBlockchainIntegrity } from '../../services/blockchainIdentityService';
 import './IncidentDetail.css';
 
 export default function IncidentDetail() {
@@ -15,7 +16,10 @@ export default function IncidentDetail() {
   const [incidents, setIncidents] = useState([]);
   const [safetyEvents, setSafetyEvents] = useState([]);
   const [contacts, setContacts] = useState([]);
+  const [activeEfir, setActiveEfir] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [verificationResult, setVerificationResult] = useState(null);
+  const [verifying, setVerifying] = useState(false);
 
   useEffect(() => {
     if (!authoritySupabase) return;
@@ -72,6 +76,15 @@ export default function IncidentDetail() {
           .eq('tourist_id', tId);
         if (conts && isMounted) setContacts(conts);
 
+        // Fetch active E-FIR if any
+        const { data: efir } = await authoritySupabase
+          .from('e_firs')
+          .select('*')
+          .eq('tourist_id', tId)
+          .eq('status', 'ACTIVE')
+          .maybeSingle();
+        if (efir && isMounted) setActiveEfir(efir);
+
       } catch (err) {
         console.error('Failed to fetch tourist details', err);
       }
@@ -91,6 +104,9 @@ export default function IncidentDetail() {
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tourists', filter: `id=eq.${id}` }, () => {
         fetchTouristData();
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'e_firs', filter: `tourist_id=eq.${id}` }, () => {
+        fetchTouristData();
+      })
       .subscribe();
 
     return () => {
@@ -105,6 +121,89 @@ export default function IncidentDetail() {
       setIncidents(prev => prev.map(inc => inc.id === incidentId ? { ...inc, status: newStatus } : inc));
     }
   };
+
+  const handleMarkMissing = async () => {
+    const confirmMsg = `MARK TOURIST AS MISSING?
+    
+Tourist: ${realTourist.name}
+Digital Tourist ID: ${realTourist.safety_id}
+Last known location: ${realTourist.last_known_location_at ? new Date(realTourist.last_known_location_at).toLocaleString() : 'Unknown'}
+Safety Score: ${realTourist.current_safety_score || 100}
+Risk: ${realTourist.current_safety_severity || 'SAFE'}
+`;
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      const { error } = await authoritySupabase
+        .from('tourists')
+        .update({ is_missing: true })
+        .eq('id', realTourist.id);
+      
+      if (!error) {
+        setRealTourist(prev => ({ ...prev, is_missing: true }));
+      }
+    } catch (err) {
+      console.error('Failed to mark missing', err);
+    }
+  };
+
+  const handleGenerateEFIR = async (incidentId) => {
+    if (activeEfir) {
+      navigate(`/authority/efir/${activeEfir.id}`);
+      return;
+    }
+
+    try {
+      const firReference = `TG-EFIR-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000000).toString().padStart(6, '0')}`;
+      
+      const newEfir = {
+        fir_reference: firReference,
+        tourist_id: realTourist.id,
+        incident_id: incidentId || null,
+        status: 'ACTIVE',
+        tourist_name_snapshot: realTourist.name,
+        safety_id_snapshot: realTourist.safety_id,
+        nationality_snapshot: realTourist.nationality,
+        phone_snapshot: realTourist.phone,
+        kyc_status_snapshot: realTourist.kyc_status,
+        last_known_latitude: realTourist.current_latitude,
+        last_known_longitude: realTourist.current_longitude,
+        last_known_location_at: realTourist.last_location_update,
+        safety_score_snapshot: realTourist.current_safety_score,
+        risk_severity_snapshot: realTourist.current_safety_severity,
+        risk_signals_snapshot: realTourist.current_safety_signals || [],
+        incident_summary: incidentId ? 'Generated from active SOS incident.' : 'Generated directly from profile.',
+      };
+
+      const { data, error } = await authoritySupabase
+        .from('e_firs')
+        .insert([newEfir])
+        .select()
+        .single();
+        
+      if (!error && data) {
+        navigate(`/authority/efir/${data.id}`);
+      } else {
+        console.error('Failed to generate E-FIR:', error);
+      }
+    } catch (err) {
+      console.error('Error in handleGenerateEFIR', err);
+    }
+  };
+
+  const handleVerifyIntegrity = async () => {
+    setVerifying(true);
+    setVerificationResult(null);
+    try {
+      const result = await verifyBlockchainIntegrity(realTourist);
+      setVerificationResult(result);
+    } catch (error) {
+      setVerificationResult({ isValid: false, error: 'Verification failed unexpectedly.' });
+    } finally {
+      setVerifying(false);
+    }
+  };
+
 
   if (loading) {
     return (
@@ -154,6 +253,11 @@ export default function IncidentDetail() {
             }}>
               {currentActiveSOS.length > 0 ? 'ACTIVE SOS' : currentSeverity}
             </span>
+            {realTourist.is_missing && (
+              <span className={`ai-risk-badge`} style={{ background: '#000', color: '#fff', marginLeft: '8px' }}>
+                MISSING
+              </span>
+            )}
           </div>
           <div className="incident-meta">
             Safety Score: {currentScore}/100 • {incidents.length} Total Incidents
@@ -252,6 +356,39 @@ export default function IncidentDetail() {
                     </div>
                   </div>
                 </div>
+
+                <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--outline-variant)' }}>
+                  <button 
+                    className="btn btn-secondary btn-full" 
+                    onClick={handleVerifyIntegrity} 
+                    disabled={verifying}
+                    style={{ fontSize: 12, padding: '8px' }}
+                  >
+                    {verifying ? 'VERIFYING...' : 'VERIFY BLOCKCHAIN INTEGRITY'}
+                  </button>
+                  
+                  {verificationResult && (
+                    <div style={{ 
+                      marginTop: '12px', 
+                      padding: '12px', 
+                      background: verificationResult.isValid ? 'var(--safe-container, #dcfce7)' : 'var(--error-container, #fee2e2)',
+                      borderRadius: '8px',
+                      fontSize: 12
+                    }}>
+                      <div style={{ fontWeight: 'bold', color: verificationResult.isValid ? 'var(--safe, #16a34a)' : 'var(--error, #dc2626)', marginBottom: '8px' }}>
+                        {verificationResult.isValid ? '✓ INTEGRITY VERIFIED' : '✗ VERIFICATION FAILED'}
+                      </div>
+                      {verificationResult.error ? (
+                        <div style={{ color: 'var(--error)' }}>{verificationResult.error}</div>
+                      ) : (
+                        <div style={{ fontFamily: 'monospace', wordBreak: 'break-all', opacity: 0.8, fontSize: 11 }}>
+                          <div>Expected: {verificationResult.expectedHash.substring(0, 32)}...</div>
+                          <div>Actual: {verificationResult.actualHash.substring(0, 32)}...</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </div>
@@ -302,6 +439,25 @@ export default function IncidentDetail() {
                 ACTIVE EMERGENCY ACTIONS
               </h2>
               
+              {/* Added missing controls for the case generally */}
+              <div style={{ marginBottom: '16px', display: 'flex', gap: '12px' }}>
+                {!realTourist.is_missing && (
+                  <button className="btn btn-primary" onClick={handleMarkMissing} style={{ background: '#000', color: '#fff', border: 'none', padding: '12px', flex: 1 }}>
+                    MARK AS MISSING
+                  </button>
+                )}
+                {realTourist.is_missing && activeEfir && (
+                  <button className="btn btn-secondary" onClick={() => navigate(`/authority/efir/${activeEfir.id}`)} style={{ padding: '12px', flex: 1, border: '2px solid #000', color: '#000' }}>
+                    VIEW E-FIR
+                  </button>
+                )}
+                {realTourist.is_missing && !activeEfir && (
+                  <button className="btn btn-primary" onClick={() => handleGenerateEFIR(currentActiveSOS[0]?.id)} style={{ padding: '12px', flex: 1 }}>
+                    GENERATE E-FIR
+                  </button>
+                )}
+              </div>
+              
               {currentActiveSOS.map(inc => (
                 <div key={inc.id} style={{ padding: '16px', background: 'var(--surface)', borderRadius: '12px', marginBottom: '8px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
@@ -337,6 +493,28 @@ export default function IncidentDetail() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {currentActiveSOS.length === 0 && !realTourist.is_missing && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
+              <button className="btn btn-secondary" onClick={handleMarkMissing} style={{ fontSize: '12px' }}>
+                MARK AS MISSING (MANUAL)
+              </button>
+            </div>
+          )}
+          {currentActiveSOS.length === 0 && realTourist.is_missing && (
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginBottom: '16px' }}>
+               <span style={{ padding: '8px', background: '#000', color: '#fff', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>MARKED MISSING</span>
+               {activeEfir ? (
+                 <button className="btn btn-secondary" onClick={() => navigate(`/authority/efir/${activeEfir.id}`)} style={{ fontSize: '12px' }}>
+                   VIEW E-FIR
+                 </button>
+               ) : (
+                 <button className="btn btn-primary" onClick={() => handleGenerateEFIR(null)} style={{ fontSize: '12px' }}>
+                   GENERATE E-FIR
+                 </button>
+               )}
             </div>
           )}
 

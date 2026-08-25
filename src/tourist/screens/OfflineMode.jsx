@@ -12,11 +12,11 @@ export default function OfflineMode() {
   const { isOnline, isSyncing, syncOfflineData } = useOfflineStatus();
   const { gpsStatus } = useLiveLocation();
   const { user } = useAuth();
-  
+
   const [downloadedMaps, setDownloadedMaps] = useState([]);
   const [downloading, setDownloading] = useState(null);
   const [progress, setProgress] = useState(0);
-  
+
   const [profileCached, setProfileCached] = useState(false);
   const [contactsCached, setContactsCached] = useState(false);
   const [pendingSOS, setPendingSOS] = useState([]);
@@ -36,7 +36,7 @@ export default function OfflineMode() {
 
   useEffect(() => {
     refreshData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOnline, user]);
 
   const handleDownloadMap = async (cityId) => {
@@ -76,14 +76,14 @@ export default function OfflineMode() {
 
       <div className="card" style={{ marginBottom: '16px' }}>
         <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: '16px' }}>System Status</h3>
-        
+
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
           <span style={{ fontSize: 14 }}>Connection</span>
           <span style={{ fontSize: 14, fontWeight: 600, color: isOnline ? 'var(--success)' : 'var(--error)' }}>
             {isOnline ? 'Online' : 'Offline'}
           </span>
         </div>
-        
+
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
           <span style={{ fontSize: 14 }}>GPS Signal</span>
           <span style={{ fontSize: 14, fontWeight: 600, color: gpsStatus === 'ACTIVE' ? 'var(--success)' : 'var(--warning)' }}>
@@ -97,7 +97,7 @@ export default function OfflineMode() {
             {pendingSOS.length}
           </span>
         </div>
-        
+
         {pendingSOS.length > 0 && isOnline && (
           <button className="btn btn-primary btn-full" onClick={syncOfflineData} disabled={isSyncing} style={{ marginTop: '12px', marginBottom: '12px' }}>
             {isSyncing ? 'Synchronizing...' : 'Sync Pending SOS Now'}
@@ -135,8 +135,8 @@ export default function OfflineMode() {
                   {region.name}
                 </div>
               </div>
-              <button 
-                className="btn btn-primary" 
+              <button
+                className="btn btn-primary"
                 onClick={() => window.location.href = `#/tourist/offline-map/${region.id}`}
                 style={{ padding: '8px 16px', fontSize: 12 }}
               >
@@ -156,7 +156,7 @@ export default function OfflineMode() {
         {Object.values(OFFLINE_REGIONS).map(region => {
           const isDownloaded = downloadedMaps.find(m => m.id === region.id);
           const isDownloadingThis = downloading === region.id;
-          
+
           return (
             <div key={region.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--outline-variant)' }}>
               <div>

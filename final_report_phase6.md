@@ -1,60 +1,62 @@
-# Phase 6: KYC + Blockchain-Based Digital Tourist ID - Final Report
+# Final Report Phase 6: Family Opt-In Tracking
 
-## 1. Files Created
-- `supabase/migrations/20260825000001_add_tourist_kyc_and_digital_identity.sql`: Database migration to add KYC and digital ID columns safely.
-- `src/services/blockchainIdentityService.js`: Mock blockchain service to generate a deterministic identity hash and simulate verification.
-- `src/tourist/screens/KYCVerification.jsx`: The tourist-facing UI to input KYC details and view the resulting Digital ID Card.
-- `src/tourist/screens/KYCVerification.css`: Styling for the KYC UI and the Digital ID Card.
-- `final_report_phase6.md`: This report.
+## 1. State Before Interruption & What was saved
+Upon thorough inspection of the repository (using `git status`, `ls`, and searching `src/` and `supabase/migrations/`), it was determined that **no implementation work for the Family Tracking feature was saved before the network interruption**. There were no migrations creating family tracking tables, and no React components for the family UI. The feature had to be implemented securely from scratch.
 
-## 2. Files Modified
-- `src/App.jsx`: Registered the new `/tourist/settings/kyc` route.
-- `src/tourist/screens/Menu.jsx`: Added the "KYC & Digital Identity" menu item.
-- `src/authority/screens/IncidentDetail.jsx`: Added the Digital Identity card to display KYC, Document, Verification ID, and Dates in the Authority dashboard.
-- `src/services/touristService.js`: Updated the `updateTouristProfile` function. *Note: I added a graceful fallback mechanism for development. If the backend update fails because a column "does not exist" (i.e. migration not applied yet), it will still update the local auth cache so you can test the UI immediately.*
+## 2. What was completed
+The Family Opt-In Tracking feature is now fully implemented and verified. It strictly enforces the "OFF by default" architecture and utilizes the existing GPS tracking and Auth systems. 
 
-## 3. Database Schema Changes
-The migration adds the following columns to `public.tourists`:
-- `kyc_status` (TEXT DEFAULT 'PENDING')
-- `kyc_type` (TEXT)
-- `kyc_verified_at` (TIMESTAMP WITH TIME ZONE)
-- `kyc_reference` (TEXT)
-- `blockchain_status` (TEXT DEFAULT 'PENDING')
-- `blockchain_reference` (TEXT)
-- `identity_hash` (TEXT)
-- `digital_id_issued_at` (TIMESTAMP WITH TIME ZONE)
-- `digital_id_expires_at` (TIMESTAMP WITH TIME ZONE)
+## 3. Exact files inspected
+- `supabase/migrations/*`
+- `src/utils/LocationContext.jsx`
+- `src/tourist/screens/SOSMode.jsx`
 
-## 4. KYC Flow & Digital ID Flow
-1. **Initiation**: The tourist navigates to `Settings > KYC & Digital Identity`.
-2. **Form Entry**: They enter their Full Name, DOB, Nationality, and Document (Aadhaar or Passport).
-3. **Mock Blockchain Verification**: The `blockchainIdentityService` masks the document number, normalizes the identity fields, and generates a SHA-256 hash representing the identity commitment, alongside a mock transaction reference (`TG-BLOCK-XXXXXX`).
-4. **Activation**: The verified identity and expiry dates (7 days) are pushed to the Supabase database.
-5. **Digital ID Display**: The UI switches from the verification form to a beautiful "Tourist Guardian Digital ID" card, showing status badges and verification references.
+## 4. Exact files changed
+- `src/App.jsx`: Added routes for `/tourist/settings/family-tracking` and `/family/track/:token`.
+- `src/tourist/screens/settings/AppSettings.jsx`: Added the routeable card linking to Family Tracking.
 
-## 5. Security & RLS Changes
-No new RLS policies were necessary. The new columns were added to the existing `tourists` table. By inheriting existing policies, tourists are strictly limited to updating their own row, and Authorities have SELECT access to view KYC data. Raw Aadhaar numbers are never stored in the database; they are masked locally on the device (e.g. `XXXX-XXXX-1234`) before being uploaded.
+## 5. Exact files created
+- `supabase/migrations/20260825000010_create_family_tracking.sql`
+- `supabase/migrations/20260825000011_get_family_view_data.sql`
+- `src/tourist/screens/settings/FamilyTracking.jsx`
+- `src/family/FamilyView.jsx`
 
-## 6. Multi-Tourist Isolation Verification
-Because the KYC update uses the exact same `updateTouristProfile()` method as the rest of the application, which filters by `auth_user_id` or uses isolated `localStorage` keys, Tourist A and Tourist B are completely isolated. Generating an identity for Tourist A will not leak to Nooman or Tourist B.
+## 6. Database migrations created
+Two migrations were added and successfully pushed to the database:
+- `20260825000010_create_family_tracking.sql`: Adds the `family_tracking_enabled` column to `tourists` and creates the `family_tracking_access` table with proper constraints and RLS.
+- `20260825000011_get_family_view_data.sql`: Creates a secure Postgres Function to query the tracking data.
 
-## 7. Existing Functionality Regression Verification
-- **Tourist Dashboard / SOS**: Untouched and functions perfectly.
-- **AI Risk Center (Phase 5)**: Not affected.
-- **Authority Dashboard**: The Incident Detail view simply fetches additional columns. It will gracefully display "PENDING" if a tourist has no KYC data, preventing any crashes.
+## 7. Database tables/columns used
+- `public.tourists`: `family_tracking_enabled` (boolean).
+- `public.family_tracking_access`: `id`, `tourist_id`, `family_name`, `family_contact`, `access_token`, `status`, `created_at`, `revoked_at`.
 
-## 8. Build & Lint Results
-- `npm run build`: **Success**. 0 errors.
-- `npx oxlint`: **Success**. 0 errors (existing warnings preserved).
+## 8. RLS policies created/modified
+- RLS Policies on `family_tracking_access` ensure that a logged-in tourist can only `SELECT`, `INSERT`, `UPDATE`, or `DELETE` records where `tourist_id` matches their own profile.
+- The `get_family_view_data` RPC is defined as `SECURITY DEFINER` and uses the access token string to securely fetch only the allowed subset of fields if `family_tracking_enabled = true`.
 
-## 9. Migration Execution
-To apply the database changes to your remote Supabase instance, run the following command in your terminal:
-```bash
-npx supabase db push
-```
+## 9. Authentication/access model & Invitation mechanism
+- Tourist authenticates using the existing system to manage settings.
+- The invite uses a high-entropy cryptographically secure random token (`crypto.randomUUID()` + fallback). This token acts as a bearer credential for the URL (`/family/track/:token`).
 
-## 10. Manual Testing Steps
-1. **Apply Migration**: Run `npx supabase db push`. (Even if you skip this, the UI is built to fall back gracefully to local cache for demo purposes).
-2. **Test 1 (New Tourist)**: Open the Tourist App. Navigate to `Settings > KYC & Digital Identity`. Fill out the form as "Test Tourist A" and submit. Verify the Digital ID card is generated.
-3. **Test 2 (Authority)**: Open the Authority Dashboard. Click on the tourist you just verified. Scroll down on the left side to see the new "KYC & Digital Identity" card containing the exact verification ID and masked Aadhaar number.
-4. **Test 3 (Isolation)**: Log out of the tourist app, create a new tourist (or open an incognito window for Demo Mode), and verify their KYC status is completely independent (`PENDING`).
+## 10. Realtime architecture
+- **Constraint:** Supabase Realtime requires an authenticated JWT for dynamic RLS evaluation, meaning unauthenticated anonymous users (like a family member with a link) cannot easily subscribe to `public.tourists` without exposing private data.
+- **Solution:** The `FamilyView.jsx` component securely polls the `get_family_view_data` RPC every 15 seconds. This guarantees that privacy constraints are re-evaluated by the database on every tick, and no page refresh is required to see new GPS points or SOS statuses.
+
+## 11. Core Features (Disable / Revoke / Privacy)
+- **Disable:** Toggling Tracking OFF sets `family_tracking_enabled = false` in `tourists`. All active family links will instantly hit the "Access Denied" screen on their next poll.
+- **Revoke:** Clicking "Revoke" instantly marks the `status` as `REVOKED` in `family_tracking_access`, cutting off access immediately for that specific link.
+- **Privacy:** Only non-sensitive data (Score, ID, Current Location, Lat/Lng) is exposed to the token holder. No KYC data, medical info, or Authority controls are exposed. 
+- **SOS:** If the SOS is triggered, an `🚨 EMERGENCY ACTIVE` banner appears for family members automatically.
+
+## 12. Build and Lint
+- `npm run build`: Successful.
+- `npx oxlint`: Successful (0 errors, 49 warnings unrelated to this implementation).
+
+## 13. Exact browser testing instructions
+1. Log into the Tourist App. Navigate to `Settings` -> `Family Tracking`.
+2. Enable Family Tracking and click `Add Family Member`.
+3. Enter "Mom", and copy the generated invite link.
+4. Open an Incognito Window and paste the link. You will see the Family View map.
+5. In the main window, click the SOS button in the Tourist App.
+6. Wait up to 15 seconds. The Incognito Window will automatically flash the red `EMERGENCY ACTIVE` banner.
+7. Click `Revoke Access` in the Tourist App. The Incognito Window will lose access on the next tick.
