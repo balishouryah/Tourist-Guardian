@@ -128,7 +128,7 @@ export function AuthorityRealtimeProvider({ children }) {
           }
         }
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tourists' }, (payload) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tourists' }, async (payload) => {
         if (!isMounted) return;
         
         if (payload.eventType === 'DELETE') {
@@ -144,8 +144,37 @@ export function AuthorityRealtimeProvider({ children }) {
         
         // Ensure we gracefully merge since updates may not have all columns if REPLICA IDENTITY is DEFAULT
         if (updatedTourist && (updatedTourist.last_location_update || updatedTourist.last_seen)) {
+           // If we don't have this tourist's name in state, or the update doesn't have it, we need to fetch it
+           let fullTouristData = { ...updatedTourist };
+           
            setActiveTourists(prev => {
-             const existing = prev[updatedTourist.id] || {};
+             const existing = prev[updatedTourist.id];
+             
+             // If they don't exist yet, we must fetch their info asynchronously
+             if (!existing || (!existing.name && !updatedTourist.name)) {
+                // Fetch in background to not block the reducer, then update state again
+                authoritySupabase
+                  .from('tourists')
+                  .select('id, name, safety_id, current_latitude, current_longitude, last_location_update, last_seen, current_safety_score, current_safety_severity, current_safety_signals')
+                  .eq('id', updatedTourist.id)
+                  .single()
+                  .then(({ data }) => {
+                    if (data && isMounted) {
+                      setActiveTourists(current => ({
+                        ...current,
+                        [updatedTourist.id]: { ...(current[updatedTourist.id] || {}), ...data }
+                      }));
+                    }
+                  })
+                  .catch(console.error);
+                
+                return {
+                  ...prev,
+                  [updatedTourist.id]: { ...(existing || {}), ...updatedTourist }
+                };
+             }
+
+             // Otherwise, normal merge
              return {
                ...prev,
                [updatedTourist.id]: { ...existing, ...updatedTourist }

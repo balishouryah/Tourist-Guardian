@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import { DEMO_MAP_DATA } from './mockMapData';
 
@@ -31,7 +31,7 @@ export function LocationProvider({ children }) {
       }
     : realLoc;
 
-  const requestPermissionAndStart = () => {
+  const requestPermissionAndStart = React.useCallback(() => {
     if (!('geolocation' in navigator)) {
       setGpsStatus('UNAVAILABLE');
       return;
@@ -51,12 +51,12 @@ export function LocationProvider({ children }) {
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
-  };
+  }, []);
 
-  const stopTracking = () => {
+  const stopTracking = React.useCallback(() => {
     setTracking(false);
     setGpsStatus('STOPPED');
-  };
+  }, []);
 
   useEffect(() => {
     if (isDemoMode) {

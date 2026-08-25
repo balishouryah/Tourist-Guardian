@@ -93,6 +93,8 @@ export default function ARSafetyView() {
   // Handle Camera
   useEffect(() => {
     let stream = null;
+    let isMounted = true;
+    
     async function startCamera() {
       if (demoMode) return;
       try {
@@ -100,7 +102,7 @@ export default function ARSafetyView() {
           video: { facingMode: 'environment' },
           audio: true // Request audio for evidence recording
         });
-        if (videoRef.current) {
+        if (isMounted && videoRef.current) {
           videoRef.current.srcObject = stream;
           setCameraStatus('ACTIVE');
         }
@@ -108,31 +110,36 @@ export default function ARSafetyView() {
         // Fallback to video only if audio denied
         try {
           stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-          if (videoRef.current) {
+          if (isMounted && videoRef.current) {
             videoRef.current.srcObject = stream;
             setCameraStatus('ACTIVE (NO AUDIO)');
           }
         } catch (videoErr) {
           console.warn("Camera access failed, falling back to Demo Mode:", videoErr);
-          setCameraStatus('DENIED/UNAVAILABLE');
-          setDemoMode(true);
+          if (isMounted) {
+            setCameraStatus('DENIED/UNAVAILABLE');
+            setDemoMode(true);
+          }
         }
       }
     }
     
     startCamera();
     
-    // Auto-start GPS if we are not in demo mode and not tracking
-    if (!demoMode && !tracking && gpsStatus !== 'DENIED' && gpsStatus !== 'UNAVAILABLE') {
-       requestPermissionAndStart();
-    }
-    
     return () => {
+      isMounted = false;
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop();
       }
       if (stream) stream.getTracks().forEach(track => track.stop());
     };
+  }, [demoMode]);
+
+  // Auto-start GPS separately so it doesn't interrupt camera recording
+  useEffect(() => {
+    if (!demoMode && !tracking && gpsStatus !== 'DENIED' && gpsStatus !== 'UNAVAILABLE') {
+       requestPermissionAndStart();
+    }
   }, [demoMode, tracking, gpsStatus, requestPermissionAndStart]);
 
   // Handle Compass Loop (Only runs if permission is granted)
